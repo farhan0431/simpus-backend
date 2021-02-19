@@ -10,6 +10,8 @@ use DB;
 use App\Model_Oracle\Sppt;
 
 use App\Model_Bphtb\ObjekPajak;
+use App\Model_Bphtb\PembayaranBphtb;
+use App\Model_Bphtb\TargetBphtb;
 
 use App\User;
 use App\Settings;
@@ -35,32 +37,76 @@ class HomeController extends Controller
         $years = array_reverse(range(date("Y"), $range),true);
 
 
+        // ALL DATA CHART
         // SPPT
-        $type = '';
-        // Data Realisasi Tahunan
+        $dataTargetSppt = [];
         $dataRealisasiPerTahunSppt = [];
-        $realisasiSpptTahun = '';
-        try {
-            DB::connection('oracle')->getPdo();
-            $dataRealisasiPerTahunSppt = [];
-            foreach ($years as $year => $value) {
-                $results = Sppt::whereYear('tgl_pembayaran_sppt',$value)->sum('jml_sppt_yg_dibayar'); 
-                array_push($dataRealisasiPerTahunSppt,$results);
-            }
+        // SIMPAD
+        $dataTargetPertahunSimpad = [];
+        $dataRealisasiPertahunSimpad = [];
+        // BPHTB
+        $dataTargetBphtb = [];
+        $dataRealisasiBphtb = [];
 
-            $realisasiSpptTahun = Sppt::whereYear('tgl_pembayaran_sppt',Carbon::now()->year)->sum('jml_sppt_yg_dibayar');
-            $type = 'real';
-        } catch (\Exception $e) {
-            abort($e instanceof PDOException ? 503 : 500);
-            $dataRealisasiPerTahunSppt = ['123123','124234234','123123123','123123'];
-            $realisasiSpptTahun = 120398123;
-            $type = 'dummy';
+        $realisasi_pertahun_total = [];
+        $target_pertahun_total = [];
+        
+        foreach ($years as $year => $value) {
+        
+            // SPPT
+                //Realisasi
+            $resultRealisasiSppt = Sppt::whereYear('tgl_pembayaran_sppt',$value)->sum('jml_sppt_yg_dibayar');
+            array_push($dataRealisasiPerTahunSppt,$resultRealisasiSppt);
+             
+                //Target
+            $resultTargetSppt = TargetPenerimaanSppt::where('tahun',$value)->get()->sum(function($item) {
+                return $item->target;
+            });
+            array_push($dataTargetSppt,$resultTargetSppt);
+           
+            // SIMPAD
+                //Realisasi
+            $resultRealisasiSimpad = TargetPenerimaan::where('tahun',$value)->get()->sum(function($item) {
+                return $item->target;
+            });
+            array_push($dataRealisasiPertahunSimpad,$resultRealisasiSimpad);
+            
+                //Target
+            $resultTargetSimpad = SptpdReguler::where('status',3)->whereYear('tgl_bayar', $value)->get()->sum(function($item) {
+                return $item->pajak_terhutang;
+            });
+            array_push($dataTargetPertahunSimpad,$resultTargetSimpad);
+            // BPHTB
+                //Realisasi
+            $resultRealisasiBphtb = PembayaranBphtb::where('status',1)->whereYear('tanggal_pembayaran',$value)->get()->sum(function($item) {
+                return $item->jumlah_bayar;
+            });
+            array_push($dataRealisasiBphtb,$resultRealisasiBphtb);
+            
+                //Target
+            $resultTargetBphtb = TargetBphtb::where('tahun',$value)->get()->sum(function($item) {
+                return $item->target;
+            });
+            array_push($dataTargetBphtb,$resultTargetBphtb);
+
+
+            array_push($realisasi_pertahun_total,$resultRealisasiSppt+$resultRealisasiSimpad+$resultRealisasiBphtb);
+            array_push($target_pertahun_total,$resultTargetSppt+$resultTargetSimpad+$resultTargetBphtb);
+
         }
+
+        // END ALL DATA CHART
+
+        // SPPT
+        // Data Realisasi Tahunan
+        
+        $realisasiSpptTahun = Sppt::whereYear('tgl_pembayaran_sppt',Carbon::now()->year)->sum('jml_sppt_yg_dibayar');
         // Data Target Tahunan
-        $dataTargetPertahunSppt = [];
+        
         $targetSpptTahun = TargetPenerimaanSppt::where('tahun',$yearNow)->get()->sum(function($item) {
             return $item->target;
-        });        
+        });
+        
         // END SPPT
 
         // SIMPAD
@@ -76,31 +122,47 @@ class HomeController extends Controller
         $realisasiSimpad = SptpdReguler::where('status',3)->whereYear('tgl_bayar', $yearNow)->get()->sum(function($item) {
             return $item->pajak_terhutang;
         });
-
-
-
-
         // END SIMPAD
 
-        
+        // BHPTB
 
-        // return response()->json(['status' => 'success', 'data' => $online]);
+        // Data Realisasi
+        $realisasiBphtb = PembayaranBphtb::where('status',1)->whereYear('tanggal_pembayaran',$yearNow)->get()->sum(function($item) {
+            return $item->jumlah_bayar;
+        });
+
+        // Data Target
+        $targetBphtpTahun = TargetBphtb::where('tahun',$yearNow)->get()->sum(function($item) {
+            return $item->target;
+        });
+
+        // END BHPTB
+
+       
+
         return response()->json(
             [
                 // SPPT
                 'realisasi_pertahun_sppt'=> $dataRealisasiPerTahunSppt,
                 'realisasi_sppt' => "$realisasiSpptTahun",
+                'target_pertahun_sppt' => $dataTargetSppt,
                 'target_sppt' => "$targetSpptTahun",
                 //SIMPAD
-                'target_simpad' => "$targetSimpadTahun",
+                'realisasi_pertahun_simpad' => $dataRealisasiPertahunSimpad,
                 'realisasi_simpad' => "$realisasiSimpad",
-
+                'target_pertahun_simpad' => $dataTargetPertahunSimpad,
+                'target_simpad' => "$targetSimpadTahun",
+                // BPHTB
+                'realisasi_pertahun_bphtb' => $dataRealisasiBphtb,
+                'realisasi_bphtb' => "$realisasiBphtb",
+                'target_pertahun_bphtb' => $dataTargetBphtb,
+                'target_bphtb' => "$targetBphtpTahun",
                 //TOTAL DATA
-                'total_realisasi' => strval($realisasiSimpad+$realisasiSpptTahun),
-                'total_target' => strval($targetSpptTahun+$targetSimpadTahun),
-
-                'type' => $type,
-            ]);
+                'total_realisasi' => strval($realisasiSimpad+$realisasiSpptTahun+$realisasiBphtb),
+                'total_target' => strval($targetSpptTahun+$targetSimpadTahun+$targetBphtpTahun),
+                'realisasi_pertahun_total' => $realisasi_pertahun_total,
+                'target_pertahun_total' => $target_pertahun_total
+             ]);
     }
 
     public function month() {

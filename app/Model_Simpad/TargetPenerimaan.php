@@ -9,8 +9,8 @@ class TargetPenerimaan extends Model
 {
 
     protected $connection = 'mysql_simpad';
-    protected $guarded = [];
     protected $table = 'target_penerimaan';
+    protected $guarded = [];
     protected $appends = ['bulan_label', 'target_format'];
 
     public function getBulanLabelAttribute()
