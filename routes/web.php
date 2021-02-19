@@ -35,8 +35,9 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
         $router->group([
             'prefix' => '/home'
         ], function () use ($router) {
-            $router->post('year', 'HomeController@year');
+            $router->get('year', 'HomeController@year');
             $router->post('month', 'HomeController@month');
+            $router->get('get-data', 'HomeController@getMoreData');
         });
     });
 
