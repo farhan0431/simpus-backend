@@ -5,10 +5,12 @@ namespace App\Model_Simpad;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
-class SptpdReguler extends Model
+class JenisPajak extends Model
 {
     protected $connection = 'mysql_simpad';
-    protected $table = 'sptpd_reguler';
+    protected $table = 'jenis_pajak';
     protected $guarded = [];
+
+
 
 }

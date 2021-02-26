@@ -19,6 +19,10 @@ use App\TargetPenerimaanSppt;
 
 use App\Model_Simpad\TargetPenerimaan;
 use App\Model_Simpad\SptpdReguler;
+use App\Model_Simpad\WajibPajak;
+use App\Model_Simpad\ObjekPajakSimpad;
+use App\Model_Simpad\JenisPajak;
+
 use Carbon\Carbon;
 
 
@@ -166,63 +170,8 @@ class HomeController extends Controller
     }
 
     public function month() {
-        
-        $penerimaan = [];
-        $type = [];
-        try {
-            DB::connection('oracle')->getPdo();
-            
-            $results = Sppt::whereYear('tgl_pembayaran_sppt','2010')->get()->groupBy(function($val) {
-                return Carbon::parse($val->tgl_pembayaran_sppt)->format('m');
-            });
-            $data = [
-                '01' => 0,
-                '02' => 0,
-                '03' => 0,
-                '04' => 0,
-                '05' => 0,
-                '06' => 0,
-                '07' => 0,
-                '08' => 0,
-                '09' => 0,
-                '10' => 0,
-                '11' => 0,
-                '12' => 0
-            ];
-    
-            
-            foreach ($data as $key => $value) {
-                
-                if(isset($results[$key])){
-                    $sum = 0;
-                    foreach ($results[$key] as $keyRes => $valueRes) {
-                        $sum += $valueRes['jml_sppt_yg_dibayar'];
-                    }
-                    $data[$key] = $sum;
-                    array_push($penerimaan,$sum);
-                }else{
-                    array_push($penerimaan,'0');
-                }
-                
-            }
-            
-            $type = 'real';
-        } catch (\Exception $e) {
-            $penerimaan = ['12','12','12','12','12','123','123','234','234','234','123','234'];
-            $type = 'dummy';
-        }
-        
-
-
-        return response()->json(['bulan' => $penerimaan,'type'=>$type]);
-    }
-
-    public function getMoreData(Request $request)
-    {
 
         $yearNow = Carbon::now()->format('Y');
-        $range = $yearNow - Settings::first()->range_tahun;
-        $years =array_reverse(range(date("Y"), $range),true);
 
         $months = [
             '01' => 0,
@@ -239,42 +188,198 @@ class HomeController extends Controller
             '12' => 0
         ];
 
-
+        // ALL DATA CHART
+        // SPPT
+        $dataTargetPerBulanSppt = [];
+        $totalTargetSppt = 0;
+        $dataRealisasiPerBulanSppt = [];
+        $totalRealisasiSppt = 0;
+        $spptRealisasi = Sppt::whereYear('tgl_pembayaran_sppt','2010')->get()->groupBy(function($val) {
+            return Carbon::parse($val->tgl_pembayaran_sppt)->format('m');
+        });
+        $spptTarget =  TargetPenerimaanSppt::where('tahun',$yearNow)->orderBy('bulan')->get();
         // SIMPAD
-
-        $targetSimpad = TargetPenerimaan::where('tahun', $yearNow)->orderBy('bulan','ASC');
-
-
-        // Data Total Target Tahun
-        $targetSimpadTahun = $targetSimpad->get()->sum(function($item) {
-            return $item->target;
+        $dataTargetPerBulanSimpad = [];
+        $totalTargetSimpad = 0;
+        $dataRealisasiPerBulanSimpad = [];
+        $totalRealisasiSimpad = 0;
+        $simpadRealisasi = SptpdReguler::where('status',3)->whereYear('tgl_bayar',$yearNow)->orderBy('tgl_bayar','ASC')->get()->groupBy(function($item) {
+            return Carbon::parse($item->tgl_bayar)->format('m');
+        });
+        $simpadTarget = TargetPenerimaan::where('tahun',$yearNow)->orderBy('bulan','ASC')->get();
+        // BPHTB
+        $dataTargetPerBulanBphtb = [];
+        $totalTargetBphtb = 0;
+        $dataRealisasiPerBulanBphtb = [];
+        $totalRealisasiBphtb = 0;
+        $targetBphtb = TargetBphtb::where('tahun','2020')->orderBy('bulan','ASC')->get();
+        $realisasiBphtb = PembayaranBphtb::where('status',1)->whereYear('tanggal_pembayaran','2020')->orderBy('tanggal_pembayaran','ASC')->get()->groupBy(function($item){
+            return Carbon::parse($item->tanggal_pembayaran)->format('m');
         });
 
-        // Data Target Pertahun
+        $realisasi_perbulan_total = [];
+        $realisasi_total = 0;
+        $target_perbulan_total = [];
+        $target_total = 0;
 
 
 
-        // Data Target Perbulan
-        $targetSimpadBulan = $targetSimpad->get();
-        $dataTargetSimpadBulan = [];
-        foreach($months as $key => $month) {
+
+
+        foreach ($months as $key => $value) {
             $index = ltrim($key, '0');
-            if(isset($targetSimpadBulan[($index -= 1)]))
-            {
-                array_push($dataTargetSimpadBulan,$targetSimpadBulan[$index]['target']);
+            $index--;
+
+            $sumSpptRealisasi = 0;
+            $sumSpptTarget = 0;
+            $sumSimpadRealisasi = 0;
+            $sumSimpadTarget = 0;
+            $sumBphtbRealisasi = 0;
+            $sumBphtbTarget = 0;
+            
+            
+
+            if(isset($spptRealisasi[$key])){
+                $sum = 0;
+                foreach ($spptRealisasi[$key] as $keyRes => $valueRes) {
+                    $totalRealisasiSppt+=$valueRes['jml_sppt_yg_dibayar'];
+                    $realisasi_total+=$valueRes['jml_sppt_yg_dibayar'];
+                    $sum += $valueRes['jml_sppt_yg_dibayar'];
+                }
+                array_push($dataRealisasiPerBulanSppt,$sum);
+                $sumSpptRealisasi = $sum;
             }else{
-                array_push($dataTargetSimpadBulan,0);
+                array_push($dataRealisasiPerBulanSppt,0);
+            }
+            if(isset($spptTarget[$index])){
+                $sum = 0;
+                $totalTargetSppt += $spptTarget[$index]['target'];
+                $target_total += $spptTarget[$index]['target'];
+                $sum += $spptTarget[$index]['target'];
+                array_push($dataTargetPerBulanSppt,$sum);
+                $sumSpptTarget = $sum;
+            }else{
+                array_push($dataTargetPerBulanSppt,0);
+            }
+            if(isset($simpadRealisasi[$key]))
+            {
+
+                $sum = 0;
+                foreach ($simpadRealisasi[$key] as $keyRes=>$valueRes)
+                {
+                    $totalRealisasiSimpad += $valueRes['pajak_terhutang'];
+                    $realisasi_total += $valueRes['pajak_terhutang'];
+                    $sum += $valueRes['pajak_terhutang'];
+                
+                }
+                array_push($dataRealisasiPerBulanSimpad,$sum);
+                $sumSimpadRealisasi = $sum;
+            }else{
+                array_push($dataRealisasiPerBulanSimpad,0);
+            }
+            if(isset($simpadTarget[$index]))
+            {
+                $sum = 0;
+                $totalTargetSimpad += $simpadTarget[$index]['target'];
+                $sum += $simpadTarget[$index]['target'];
+                $target_total += $simpadTarget[$index]['target'];
+                array_push($dataTargetPerBulanSimpad,$sum);
+                $sumSimpadTarget = $sum;
+            }else{
+                array_push($dataTargetPerBulanSimpad,0);
+            }
+            if(isset($realisasiBphtb[$key]))
+            {
+                $sum = 0;
+                foreach($realisasiBphtb[$key] as $keyRes=>$valueRes)
+                {
+                    $totalRealisasiBphtb += $valueRes['jumlah_bayar'];
+                    $sum += $valueRes['jumlah_bayar'];
+                    $realisasi_total += $valueRes['jumlah_bayar'];
+                }
+                array_push($dataRealisasiPerBulanBphtb,$sum);
+                $sumBphtbRealisasi = $sum;
+            }else{
+                array_push($dataRealisasiPerBulanBphtb,$sum);
+            }
+            if(isset($targetBphtb[$index])) {
+                $sum = 0;
+                $totalTargetBphtb += $targetBphtb[$index]['target'];
+                $sum += $targetBphtb[$index]['target'];
+                $target_total += $targetBphtb[$index]['target'];
+                array_push($dataTargetPerBulanBphtb,$sum);
+                $sumBphtbTarget= $sum;
+            }else{
+                array_push($dataTargetPerBulanBphtb,0);
+            }
+
+
+            array_push($realisasi_perbulan_total,$sumSimpadRealisasi+$sumSpptRealisasi+$sumBphtbRealisasi);
+            array_push($target_perbulan_total,$sumSpptTarget+$sumSimpadTarget+$sumBphtbTarget);
+
+        }
+
+        return response()->json([
+            //SPPT
+            'realisasi_perbulan_sppt' => $dataRealisasiPerBulanSppt,
+            'total_realisasi_sppt' => $totalRealisasiSppt,
+            'target_perbulan_sppt' => $dataTargetPerBulanSppt,
+            'total_target_sppt' => $totalTargetSppt,
+            //SIMPAD
+            'realisasi_perbulan_simpad' => $dataRealisasiPerBulanSimpad,
+            'total_realisasi_simpad' => $totalRealisasiSimpad,
+            'target_perbulan_simpad' => $dataTargetPerBulanSimpad,
+            'total_target_simpad' => $totalTargetSimpad,
+            //BPHP
+            'realisasi_perbulan_bphtb' => $dataRealisasiPerBulanBphtb,
+            'total_realisasi_bphtb' => $totalRealisasiBphtb,
+            'target_perbulan_bphtb' => $dataTargetPerBulanBphtb,
+            'total_target_bphtb' => $totalTargetBphtb,
+            //TOTAL
+            'data_realisasi_perbulan' => $realisasi_perbulan_total,
+            'total_realisasi_perbulan' => $realisasi_total,
+            'data_target_perbulan' => $target_perbulan_total,
+            'total_target_perbulan' => $target_total
+        ]);
+
+
+    }
+
+  
+
+    public function getMoreData(Request $request)
+    {
+
+        $sptpd = SptpdReguler::where('status',3)->orderBy('objek_pajak_id','ASC')->get();
+
+        $dataSptpd = [];
+        $objek_pajak_id_sebelumnya = "0";
+        foreach($sptpd as $row) {
+            $sum = 0;
+            $objek_pajak_id = $row['objek_pajak_id'];
+            if($objek_pajak_id == $objek_pajak_id_sebelumnya) {
+                $objek_pajak_id_sebelumnya = $row['objek_pajak_id'];
+                $sum += $row['sdh_dibayar'];
+                $dataSptpd["$objek_pajak_id_sebelumnya"] = $sum+$dataSptpd["$objek_pajak_id_sebelumnya"];
+            }else{
+                $objek_pajak_id_sebelumnya = $row['objek_pajak_id'];
+                $sum += $row['sdh_dibayar'];
+                $dataSptpd["$objek_pajak_id_sebelumnya"] = $sum;
             }
         }
-        // END SIMPAD
 
-        // BPHTB
-        $objekPajakBphtb = ObjekPajak::count();
-        // END BPHTP
+        arsort($dataSptpd);
+        $dataSptpd10 = array_slice($dataSptpd,0,10,true);
+        $dataObjekPajak = [];
+        foreach ($dataSptpd10 as $key => $value) {
+            $objekPajak = ObjekPajakSimpad::with('wajib_pajak')->where('id',$key)->first();
+            $dataObjekPajak[$key] = $objekPajak;
+        }
 
-        return response()->json(['total_wp_bphtp' => "$objekPajakBphtb",'total_target_simpad_tahun' => "$targetSimpadTahun",'target_simpad_perbulan' => $dataTargetSimpadBulan, 'years' => $years]);
+        $jenisPajak = JenisPajak::where('level',3)->get();
 
 
-        
+
+        return response()->json([ 'top' => $dataObjekPajak,'pajak' => $jenisPajak]);
     }
 }
