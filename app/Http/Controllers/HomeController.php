@@ -59,14 +59,14 @@ class HomeController extends Controller
         
             // SPPT
                 //Realisasi
-            $resultRealisasiSppt = Sppt::whereYear('tgl_pembayaran_sppt',$value)->sum('jml_sppt_yg_dibayar');
-            array_push($dataRealisasiPerTahunSppt,$resultRealisasiSppt);
+            // $resultRealisasiSppt = Sppt::whereYear('tgl_pembayaran_sppt',$value)->sum('jml_sppt_yg_dibayar');
+            // array_push($dataRealisasiPerTahunSppt,$resultRealisasiSppt);
              
                 //Target
-            $resultTargetSppt = TargetPenerimaanSppt::where('tahun',$value)->get()->sum(function($item) {
-                return $item->target;
-            });
-            array_push($dataTargetSppt,$resultTargetSppt);
+            // $resultTargetSppt = TargetPenerimaanSppt::where('tahun',$value)->get()->sum(function($item) {
+            //     return $item->target;
+            // });
+            // array_push($dataTargetSppt,$resultTargetSppt);
            
             // SIMPAD
                 //Realisasi
@@ -94,8 +94,8 @@ class HomeController extends Controller
             array_push($dataTargetBphtb,$resultTargetBphtb);
 
 
-            array_push($realisasi_pertahun_total,$resultRealisasiSppt+$resultRealisasiSimpad+$resultRealisasiBphtb);
-            array_push($target_pertahun_total,$resultTargetSppt+$resultTargetSimpad+$resultTargetBphtb);
+            // array_push($realisasi_pertahun_total,$resultRealisasiSppt+$resultRealisasiSimpad+$resultRealisasiBphtb);
+            // array_push($target_pertahun_total,$resultTargetSppt+$resultTargetSimpad+$resultTargetBphtb);
 
         }
 
@@ -104,7 +104,7 @@ class HomeController extends Controller
         // SPPT
         // Data Realisasi Tahunan
         
-        $realisasiSpptTahun = Sppt::whereYear('tgl_pembayaran_sppt',Carbon::now()->year)->sum('jml_sppt_yg_dibayar');
+        // $realisasiSpptTahun = Sppt::whereYear('tgl_pembayaran_sppt',Carbon::now()->year)->sum('jml_sppt_yg_dibayar');
         // Data Target Tahunan
         
         $targetSpptTahun = TargetPenerimaanSppt::where('tahun',$yearNow)->get()->sum(function($item) {
@@ -148,7 +148,7 @@ class HomeController extends Controller
             [
                 // SPPT
                 'realisasi_pertahun_sppt'=> $dataRealisasiPerTahunSppt,
-                'realisasi_sppt' => "$realisasiSpptTahun",
+                // 'realisasi_sppt' => "$realisasiSpptTahun",
                 'target_pertahun_sppt' => $dataTargetSppt,
                 'target_sppt' => "$targetSpptTahun",
                 //SIMPAD
@@ -162,8 +162,8 @@ class HomeController extends Controller
                 'target_pertahun_bphtb' => $dataTargetBphtb,
                 'target_bphtb' => "$targetBphtpTahun",
                 //TOTAL DATA
-                'total_realisasi' => strval($realisasiSimpad+$realisasiSpptTahun+$realisasiBphtb),
-                'total_target' => strval($targetSpptTahun+$targetSimpadTahun+$targetBphtpTahun),
+                // 'total_realisasi' => strval($realisasiSimpad+$realisasiSpptTahun+$realisasiBphtb),
+                // 'total_target' => strval($targetSpptTahun+$targetSimpadTahun+$targetBphtpTahun),
                 'realisasi_pertahun_total' => $realisasi_pertahun_total,
                 'target_pertahun_total' => $target_pertahun_total
              ]);

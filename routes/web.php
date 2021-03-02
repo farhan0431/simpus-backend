@@ -44,6 +44,11 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             'prefix' => '/target'
         ], function() use ($router) {
             $router->get('/', 'TargetController@index');
+            $router->post('/', 'TargetController@store');
+            $router->get('/simpad', 'TargetController@index_simpad');
+            $router->post('/simpad', 'TargetController@store_simpad');
+            $router->get('/bphtb', 'TargetController@index_bphtb');
+            $router->post('/bphtb', 'TargetController@store_bphtb');
         });
     });
 
