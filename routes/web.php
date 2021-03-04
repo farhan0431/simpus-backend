@@ -52,6 +52,12 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->get('/bphtb', 'TargetController@index_bphtb');
             $router->post('/bphtb', 'TargetController@store_bphtb');
         });
+
+        $router->group([
+            'prefix' => '/user'
+        ], function() use ($router) {
+            $router->get('/', 'UserController@index');
+        });
     });
 
 });

@@ -17,7 +17,8 @@ class UserController extends Controller
         });
         return response()->json([
             'status' => 'success', 
-            'data' => request()->type == 'all' ? $user->get():$user->paginate(request()->per_page)
+            'search' => request()->q,
+            'data' => request()->type == 'all' ? $user->get():$user->paginate(10)
         ]);
     }
 
