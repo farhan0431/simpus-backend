@@ -73,6 +73,15 @@ class TargetController extends Controller
 
     }
 
+    public function delete($id)
+    {
+
+        $role = TargetPenerimaanSppt::find($id);
+        $role->delete();
+        // logActivity('Menghapus Role');
+        return response()->json(['status' => 'success']);
+    }
+
 
     public function index_simpad() {
 
