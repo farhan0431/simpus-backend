@@ -76,10 +76,56 @@ class TargetController extends Controller
     public function delete($id)
     {
 
-        $role = TargetPenerimaanSppt::find($id);
-        $role->delete();
+        $data = TargetPenerimaanSppt::find($id);
+        $data->delete();
         // logActivity('Menghapus Role');
         return response()->json(['status' => 'success']);
+    }
+
+    public function update(Request $request)
+    {
+
+        // return response()->json(['status' => 'success','data' => $request->all()['lama']]);
+        $dataBaru = $request->all()['baru'];
+        $dataLama = $request->all()['lama'];
+
+        $validate = Validator::make($dataBaru, [
+            'tahun' => 'required',
+            'bulan' => 'required',
+            'target' => 'required|integer|min:1'
+        ]);
+
+        if ($validate->fails()) {
+            return response()->json($validate->errors(), 500);
+        }
+        
+
+        $check = TargetPenerimaanSppt::where('tahun',$dataBaru['tahun'])->where('bulan',$dataBaru['bulan']);
+        $dataTarget = $check->first();
+        $nameMonth = namedMonth($dataBaru['bulan']);
+
+        if($check->count() > 0)
+        {
+            if($dataLama['tahun'] == $dataTarget['tahun'] && $dataLama['bulan'] == $dataTarget['bulan'])
+            {
+                
+            }else{
+                return response()->json(['bulan' => ["Bulan $nameMonth Pada Tahun ".$dataBaru['tahun']." Telah Dipakai"]], 500);
+            }
+            
+        }
+
+
+
+        $target = TargetPenerimaanSppt::find($dataLama['id']);
+
+        $target->update([
+            'tahun' => $dataBaru['tahun'],
+            'bulan' => $dataBaru['bulan'],
+            'target' => $dataBaru['target']
+        ]);
+        return response()->json(['status' => 'success']);
+
     }
 
 
