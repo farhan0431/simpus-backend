@@ -25,7 +25,7 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     protected $guarded = [];
     protected $hidden = ['password', 'remember_token'];
     protected $dates = ['created_at'];
-    protected $appends = ['created_at_format', 'avatar_link'];
+    protected $appends = ['created_at_format', 'avatar_link', 'role_name'];
 
     public function getAvatarLinkAttribute()
     {
@@ -71,5 +71,15 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     public function tempat_pembayaran()
     {
         return $this->belongsTo('App\Model_ref\TempatBayar', 'tempat_pembayaran_id');
+    }
+
+    public function getRoleNameAttribute()
+    {
+        $roles = [
+            '1' => 'Super Admin',
+            '2' => 'Pengguna Biasa'
+        ];
+
+        return $roles[$this->role_id];
     }
 }
