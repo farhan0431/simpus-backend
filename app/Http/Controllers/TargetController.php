@@ -39,33 +39,30 @@ class TargetController extends Controller
     public function store(Request $request)
     {
         $validate = Validator::make($request->all(), [
-            'tanggal' => 'required|date',
-            'target' => 'required|integer'
+            'tahun' => 'required',
+            'bulan' => 'required',
+            'target' => 'required|integer|min:1'
         ]);
 
         if ($validate->fails()) {
             return response()->json($validate->errors(), 500);
         }
 
-        if($request->target  <= 0) {
-            return response()->json(['target' => ['Target Harus Diatas 0']], 500);
-        }
-
-        $month = date('m',strtotime($request->tanggal));
-        $year = date('Y',strtotime($request->tanggal));
-
-        $check = TargetPenerimaanSppt::where('tahun',$year)->where('bulan',$month)->count();
 
 
+        $check = TargetPenerimaanSppt::where('tahun',$request->tahun)->where('bulan',$request->bulan)->count();
+
+
+        $nameMonth = namedMonth($request->bulan);
 
         if($check > 0)
         {
-            return response()->json(['tanggal' => ['Tahun dan Bulan Telah Dipakai']], 500);
+            return response()->json(['bulan' => ["Bulan $nameMonth Pada Tahun $request->tahun Telah Dipakai"]], 500);
         }
 
         TargetPenerimaanSppt::create([
-            'tahun' => $year,
-            'bulan' => $month,
+            'tahun' => $request->tahun,
+            'bulan' => $request->bulan,
             'target' => $request->target
         ]);
     
