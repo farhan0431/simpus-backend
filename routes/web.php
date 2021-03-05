@@ -59,8 +59,17 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->get('/', 'UserController@index');
             $router->post('/', 'UserController@store');
             $router->put('/', 'UserController@update');
-            $router->delete('/{id}', 'UserController@destroy');
+            $router->delete('/{id}', 'UserController@delete');
             $router->get('/roles','UserController@roles');
+        });
+
+        $router->group([
+            'prefix' => '/jenis-pajak'
+        ], function() use ($router) {
+            $router->get('/', 'JenisPajakController@index');
+            $router->post('/', 'JenisPajakController@store');
+            $router->put('/', 'JenisPajakController@update');
+            $router->delete('/{id}', 'JenisPajakController@delete');
         });
     });
 
