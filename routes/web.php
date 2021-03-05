@@ -51,6 +51,7 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->post('/simpad', 'TargetController@store_simpad');
             $router->get('/bphtb', 'TargetController@index_bphtb');
             $router->post('/bphtb', 'TargetController@store_bphtb');
+            $router->get('/pajak', 'TargetController@jenis_pajak');
         });
 
         $router->group([

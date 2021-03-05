@@ -6,7 +6,8 @@ use Validator;
 use Illuminate\Support\Facades\Auth;
 
 use App\Settings;
-use App\TargetPenerimaanSppt;
+use App\TargetPenerimaan;
+use App\JenisPajak;
 use App\TargetPenerimaanSimpad;
 use App\TargetPenerimaanBphtb;
 
@@ -28,7 +29,7 @@ class TargetController extends Controller
         
 
 
-        $target = TargetPenerimaanSppt::orderBy('tahun','DESC')->when(request()->q, function($query) {
+        $target = TargetPenerimaan::with('jenis_pajak')->orderBy('tahun','DESC')->when(request()->q, function($query) {
             $query->where('tahun','LIKE','%'.request()->q.'%')->orWhere('bulan','LIKE','%'.request()->q.'%')->orWhere('target','LIKE','%'.request()->q.'%');
         })
         ->paginate(10);
@@ -36,12 +37,19 @@ class TargetController extends Controller
 
     }
 
+    public function jenis_pajak()
+    {
+        $pajak = JenisPajak::get();
+        return response()->json(['statis'=> 'success', 'data' => $pajak]);
+    }
+
     public function store(Request $request)
     {
         $validate = Validator::make($request->all(), [
             'tahun' => 'required',
             'bulan' => 'required',
-            'target' => 'required|integer|min:1'
+            'target' => 'required|integer|min:1',
+            'jenis_pajak_id' => 'required'
         ]);
 
         if ($validate->fails()) {
@@ -49,21 +57,22 @@ class TargetController extends Controller
         }
 
 
-
-        $check = TargetPenerimaanSppt::where('tahun',$request->tahun)->where('bulan',$request->bulan)->count();
+        $jenisPajak = JenisPajak::where('id',$request->jenis_pajak_id)->first();
+        $check = TargetPenerimaan::where('tahun',$request->tahun)->where('bulan',$request->bulan)->where('jenis_pajak_id',$request->jenis_pajak_id)->count();
 
 
         $nameMonth = namedMonth($request->bulan);
 
         if($check > 0)
         {
-            return response()->json(['bulan' => ["Bulan $nameMonth Pada Tahun $request->tahun Telah Dipakai"]], 500);
+            return response()->json(['jenis_pajak_id' => ["$jenisPajak->nama_pajak Pada Bulan $nameMonth dan Tahun $request->tahun Telah Dipakai"]], 500);
         }
 
-        TargetPenerimaanSppt::create([
+        TargetPenerimaan::create([
             'tahun' => $request->tahun,
             'bulan' => $request->bulan,
-            'target' => $request->target
+            'target' => $request->target,
+            'jenis_pajak_id' => $request->jenis_pajak_id
         ]);
     
 
@@ -76,7 +85,7 @@ class TargetController extends Controller
     public function delete($id)
     {
 
-        $data = TargetPenerimaanSppt::find($id);
+        $data = TargetPenerimaan::find($id);
         $data->delete();
         // logActivity('Menghapus Role');
         return response()->json(['status' => 'success']);
@@ -92,32 +101,33 @@ class TargetController extends Controller
         $validate = Validator::make($dataBaru, [
             'tahun' => 'required',
             'bulan' => 'required',
-            'target' => 'required|integer|min:1'
+            'target' => 'required|integer|min:1',
+            'jenis_pajak_id' => 'required'
         ]);
 
         if ($validate->fails()) {
             return response()->json($validate->errors(), 500);
         }
         
-
-        $check = TargetPenerimaanSppt::where('tahun',$dataBaru['tahun'])->where('bulan',$dataBaru['bulan']);
+        $jenisPajak = JenisPajak::where('id',$dataBaru['jenis_pajak_id'])->first();
+        $check = TargetPenerimaan::where('tahun',$dataBaru['tahun'])->where('bulan',$dataBaru['bulan'])->where('jenis_pajak_id',$dataBaru['jenis_pajak_id']);
         $dataTarget = $check->first();
         $nameMonth = namedMonth($dataBaru['bulan']);
 
         if($check->count() > 0)
         {
-            if($dataLama['tahun'] == $dataTarget['tahun'] && $dataLama['bulan'] == $dataTarget['bulan'])
+            if($dataLama['tahun'] == $dataTarget['tahun'] && $dataLama['bulan'] == $dataTarget['bulan'] && $dataLama['jenis_pajak_id'] == $dataTarget['jenis_pajak_id'])
             {
                 
             }else{
-                return response()->json(['bulan' => ["Bulan $nameMonth Pada Tahun ".$dataBaru['tahun']." Telah Dipakai"]], 500);
+                return response()->json(['jenis_pajak_id' => [$jenisPajak->nama_pajak." Pada Bulan $nameMonth dan Tahun ".$dataBaru['tahun']." Telah Dipakai"]], 500);
             }
             
         }
 
 
 
-        $target = TargetPenerimaanSppt::find($dataLama['id']);
+        $target = TargetPenerimaan::find($dataLama['id']);
 
         $target->update([
             'tahun' => $dataBaru['tahun'],
