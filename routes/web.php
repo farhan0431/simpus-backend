@@ -72,6 +72,12 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->put('/', 'JenisPajakController@update');
             $router->delete('/{id}', 'JenisPajakController@delete');
         });
+
+        $router->group([
+            'prefix' => '/settings'
+        ], function() use ($router) {
+            $router->get('/', 'SettingsController@index');
+        });
     });
 
 });

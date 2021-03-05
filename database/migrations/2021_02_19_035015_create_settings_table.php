@@ -17,12 +17,15 @@ class CreateSettingsTable extends Migration
             $table->bigIncrements('id');
             $table->string('pemerintah');
             $table->string('deskripsi_pemerintah');            
+            $table->string('slogan');
+            $table->string('inisial');
             $table->string('kantor_badan')->nullable();
             $table->string('inisial_kantor_badan')->nullable();
             $table->text('alamat')->nullable();
             $table->integer('range_tahun');
+            $table->unsignedInteger('provinsi');
+            $table->unsignedInteger('kota');
             $table->string('logo');
-            $table->string('city')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
