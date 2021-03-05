@@ -14,6 +14,8 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 
+use App\Roles;
+
 
 // class User extends Authenticatable implements JWTSubject
 class User extends Model implements AuthenticatableContract, AuthorizableContract, JWTSubject
@@ -25,7 +27,7 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     protected $guarded = [];
     protected $hidden = ['password', 'remember_token'];
     protected $dates = ['created_at'];
-    protected $appends = ['created_at_format', 'avatar_link', 'role_name'];
+    protected $appends = ['created_at_format', 'avatar_link'];
 
     public function getAvatarLinkAttribute()
     {
@@ -73,13 +75,15 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
         return $this->belongsTo('App\Model_ref\TempatBayar', 'tempat_pembayaran_id');
     }
 
-    public function getRoleNameAttribute()
+    public function role_name()
     {
         $roles = [
             '1' => 'Super Admin',
             '2' => 'Pengguna Biasa'
         ];
 
-        return $roles[$this->role_id];
+        return $this->belongsTo(Roles::class,'role_id');
+
+        // return $roles[$this->role_id];
     }
 }

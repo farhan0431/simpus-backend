@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\User;
+use App\Roles;
 use Validator;
 use Hash;
 
@@ -12,13 +13,22 @@ class UserController extends Controller
 {
     public function index()
     {
-        $user = User::orderBy('created_at', 'DESC')->when(request()->q, function($query) {
+        $user = User::with('role_name')->orderBy('created_at', 'DESC')->when(request()->q, function($query) {
             $query->where('name', 'LIKE', '%' . request()->q . '%');
         });
         return response()->json([
             'status' => 'success', 
-            'search' => request()->q,
             'data' => request()->type == 'all' ? $user->get():$user->paginate(10)
+        ]);
+    }
+
+    public function roles()
+    {
+        $roles = Roles::get();
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => $roles
         ]);
     }
 
@@ -28,14 +38,16 @@ class UserController extends Controller
             'name' => 'required|string',
             'username' => 'required|unique:users,username',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required'
+            'password' => 'required|min:6',
+            'role_id' => 'required'
         ]);
 
         User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
-            'password' => app('hash')->make($request->password)
+            'password' => app('hash')->make($request->password),
+            'role_id' => $request->role_id
         ]);
         return response()->json(['status' => 'success']);
     }
@@ -46,21 +58,23 @@ class UserController extends Controller
         return response()->json(['status' => 'success', 'data' => $user]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request)
     {
         $this->validate($request, [
             'name' => 'required|string',
-            'username' => 'required|string|unique:users,username,' . $id,
-            'email' => 'required|email|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:6'
+            'username' => 'required|string|unique:users,username,' . $request->id,
+            'email' => 'required|email|unique:users,email,' . $request->id,
+            'password' => 'nullable|string|min:6',
+            'role_id' => 'required'
         ]);
 
-        $user = User::find($id);
+        $user = User::find($request->id);
         $user->update([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => $request->password != '' ? app('hash')->make($request->password):$user->password,
+            'role_id' => $request->role_id
         ]);
         return response()->json(['status' => 'success']);
     }

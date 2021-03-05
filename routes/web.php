@@ -57,6 +57,10 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             'prefix' => '/user'
         ], function() use ($router) {
             $router->get('/', 'UserController@index');
+            $router->post('/', 'UserController@store');
+            $router->put('/', 'UserController@update');
+            $router->delete('/{id}', 'UserController@destroy');
+            $router->get('/roles','UserController@roles');
         });
     });
 
