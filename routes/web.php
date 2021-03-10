@@ -30,15 +30,17 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
         $router->post('changepassword', 'AuthController@changePassword');
     });
 
+    $router->group([
+        'prefix' => '/home'
+    ], function () use ($router) {
+        $router->get('year', 'HomeController@year');
+        $router->get('month', 'HomeController@month');
+        $router->get('get-data', 'HomeController@getMoreData');
+    });
+
     
     $router->group(['middleware' => 'auth:api'], function() use ($router) {
-        $router->group([
-            'prefix' => '/home'
-        ], function () use ($router) {
-            $router->get('year', 'HomeController@year');
-            $router->get('month', 'HomeController@month');
-            $router->get('get-data', 'HomeController@getMoreData');
-        });
+        
 
         $router->group([
             'prefix' => '/target'
@@ -77,7 +79,12 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             'prefix' => '/settings'
         ], function() use ($router) {
             $router->get('/', 'SettingsController@index');
+            $router->put('/', 'SettingsController@update');
+            $router->post('/upload', 'SettingsController@uploadLogo');
+            $router->get('/provinsi', 'SettingsController@getProvinsi');
+            $router->get('/kota/{id}','SettingsController@getKota');
         });
+
     });
 
 });
