@@ -85,7 +85,6 @@ class SettingsController extends Controller
     public function uploadLogo(Request $request)
     {
         if ($request->hasFile('file')) {
-            unlink(base_path('public/img/logo.png'));
             
             $file = $request->file('file');
             $filename = 'logo.png';
