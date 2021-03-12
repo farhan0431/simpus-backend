@@ -36,6 +36,9 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
         $router->get('year', 'HomeController@year');
         $router->get('month', 'HomeController@month');
         $router->get('get-data', 'HomeController@getMoreData');
+        $router->get('settings', 'SettingsController@index');
+        
+        
     });
 
     

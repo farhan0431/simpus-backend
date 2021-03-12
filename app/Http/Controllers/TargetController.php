@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Settings;
 use App\TargetPenerimaan;
 use App\JenisPajak;
+
+use App\Model_Simpad\JenisPajakSimpad;
 use App\TargetPenerimaanSimpad;
 use App\TargetPenerimaanBphtb;
 
@@ -29,7 +31,7 @@ class TargetController extends Controller
         
 
 
-        $target = TargetPenerimaan::with('jenis_pajak')->orderBy('tahun','DESC')->when(request()->q, function($query) {
+        $target = TargetPenerimaan::with('jenis_pajak_simpad')->orderBy('tahun','DESC')->when(request()->q, function($query) {
             $query->where('tahun','LIKE','%'.request()->q.'%')->orWhere('bulan','LIKE','%'.request()->q.'%')->orWhere('target','LIKE','%'.request()->q.'%');
         })
         ->paginate(10);
@@ -39,7 +41,7 @@ class TargetController extends Controller
 
     public function jenis_pajak()
     {
-        $pajak = JenisPajak::get();
+        $pajak = JenisPajakSimpad::get();
         return response()->json(['statis'=> 'success', 'data' => $pajak]);
     }
 

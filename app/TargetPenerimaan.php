@@ -5,6 +5,8 @@ namespace App;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Model_Simpad\JenisPajakSimpad;
+
 class TargetPenerimaan extends Model
 {
 
@@ -34,10 +36,10 @@ class TargetPenerimaan extends Model
         return $bulan[$this->bulan];
     }
 
-    public function jenis_pajak()
+    public function jenis_pajak_simpad()
     {
 
-        return $this->belongsTo(JenisPajak::class,'jenis_pajak_id');
+        return $this->belongsTo(JenisPajakSimpad::class,'jenis_pajak_id');
     }
 
 }
