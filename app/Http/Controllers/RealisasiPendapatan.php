@@ -47,12 +47,17 @@ class RealisasiPendapatan extends Controller
         $totalMonthLastYear = 0;
         $index = 0;
 
+        $realisasiBulanan = [];
+        $namaPajak = [];
+        $kodeRekening = [];
+
 
         $jenisPajak = JenisPajakSimpad::where('level','3')->get();
 
        
         foreach ($jenisPajak as $key => $value) {
             $nama_pajak = $value->nama_rekening;
+            $kode_rekening = $value->kode_rekening;
             $sptpd = 0;
             $sptpdLastYear = 0;
             $sptpdMonth = 0;
@@ -93,21 +98,34 @@ class RealisasiPendapatan extends Controller
 
             $index++;
 
+
+
+
             $fullData = [
                 'index' => $index,
                 'nama_pajak' => $nama_pajak,
                 'tahun_ini' => $sptpd,
                 'tahun_lalu' => $sptpdLastYear,
                 'bulan_ini' => $sptpdMonth,
-                'bulan_tahun_lalu' => $sptpdLastYearMonth
+                'bulan_tahun_lalu' => $sptpdLastYearMonth,
+                'kode_rekening' => $kode_rekening
             ];
 
            
 
             // $data[$nama_pajak] = $sptpd;
 
+            array_push($namaPajak,$nama_pajak);
+            array_push($kodeRekening,$kode_rekening);
+            array_push($realisasiBulanan,$sptpdMonth);
             array_push($data,$fullData);
         }
+
+        $grafik = [
+            'nama_pajak' => $namaPajak,
+            'realisasi' => $realisasiBulanan,
+            'kode_rekening' => $kodeRekening
+        ];
 
         
         return response()->json([ 
@@ -118,8 +136,10 @@ class RealisasiPendapatan extends Controller
             'total_bulan_tahun_lalu' => $totalMonthLastYear,
 
             'bulan' =>  namedMonth($monthNow),
+            'bulan_nomor' => $monthNow,
             'tahun_ini' => $yearNow,
-            'tahun_lalu' => $lastYear
+            'tahun_lalu' => $lastYear,
+            'grafik' => $grafik
         ],200);
     }
 
