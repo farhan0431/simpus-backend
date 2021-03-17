@@ -41,11 +41,14 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
         
     });
 
-    $router->group([
-        'prefix' => '/realisasi-pendapatan'
-    ], function () use ($router) {
-        $router->get('/', 'RealisasiPendapatan@index');
-    });
+    // $router->group([
+    //     'prefix' => '/realisasi-pendapatan'
+    // ], function () use ($router) {
+    //     $router->get('/', 'RealisasiPendapatan@index');
+    // });
+
+    $router->get('/realisasi-pendapatan', 'RealisasiPendapatan@index');
+    $router->get('/realisasi-perhari','RealisasiPendapatan@per_hari');
 
     
     $router->group(['middleware' => 'auth:api'], function() use ($router) {

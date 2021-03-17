@@ -123,4 +123,62 @@ class RealisasiPendapatan extends Controller
         ],200);
     }
 
+    public function per_hari(Request $request)
+    {
+
+        // $request->month == '' ? Carbon::now()->format('m') : $request->month;
+
+        $monthNow = $request->month == '' ? Carbon::now()->format('m') : $request->month;
+        $yearNow = $request->year == '' ? Carbon::now()->format('Y') : $request->year;
+
+        $date = $yearNow.'/'.$monthNow.'/01';
+
+        $days = $request->month == '' ? Carbon::now()->daysInMonth : Carbon::parse($date)->daysInMonth;
+
+        $dataDays = [];
+        $realisasi = [];
+        $allData = [];
+        $totalRealisasi = 0;
+        $totalData = 0;
+
+        for ($i=1; $i <= $days ; $i++) { 
+            $daysDate = Carbon::parse($yearNow.'/'.$monthNow.'/'.$i)->format('Y-m-d');
+            $sptpd = SptpdReguler::where('status','3')->whereDate('tgl_bayar',$daysDate)->get()->sum(function($item) {
+                return $item->pajak_terhutang;
+            });
+
+            $count = SptpdReguler::where('status','3')->whereDate('tgl_bayar',$daysDate)->count();
+
+            $fullData = [
+                'tanggal' => $daysDate,
+                'realisasi' => $sptpd,
+                'total' => $count
+            ];
+
+            $totalData = $totalData + $count;
+            $totalRealisasi = $totalRealisasi + $sptpd;
+
+            array_push($allData,$fullData);
+            array_push($realisasi,$sptpd);
+            array_push($dataDays,$i);
+
+           
+        }
+
+
+        return response()->json([
+            'bulan' => namedMonth($monthNow),
+            'tahun' => $yearNow,
+            'tanggal' => $date,
+            'total_hari' => $days,
+            'realisasi' => $realisasi,
+            'hari' => $dataDays,
+            'full_data' => $allData,
+            'total_data' => $totalData,
+            'total_realisasi' => $totalRealisasi 
+            
+        ]);
+
+    }
+
 }
