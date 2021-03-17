@@ -150,6 +150,7 @@ class RealisasiPendapatan extends Controller
             $count = SptpdReguler::where('status','3')->whereDate('tgl_bayar',$daysDate)->count();
 
             $fullData = [
+                // 'tanggal' => $i.' '.namedMonth($monthNow).' '.$yearNow,
                 'tanggal' => $daysDate,
                 'realisasi' => $sptpd,
                 'total' => $count
@@ -168,6 +169,7 @@ class RealisasiPendapatan extends Controller
 
         return response()->json([
             'bulan' => namedMonth($monthNow),
+            'bulan_nomor' => $monthNow,
             'tahun' => $yearNow,
             'tanggal' => $date,
             'total_hari' => $days,
