@@ -146,7 +146,10 @@ class RealisasiPendapatan extends Controller
     public function per_hari(Request $request)
     {
 
-        
+        set_time_limit(0);
+
+        // $request->month == '' ? Carbon::now()->format('m') : $request->month;
+
         $monthNow = $request->month == '' ? Carbon::now()->format('m') : $request->month;
         $yearNow = $request->year == '' ? Carbon::now()->format('Y') : $request->year;
 
@@ -160,73 +163,128 @@ class RealisasiPendapatan extends Controller
         $totalRealisasi = 0;
         $totalData = 0;
 
-        $sppt = DB::connection('oracle')->table('PEMBAYARAN_SPPT')->selectRaw('coalesce(SUM(jml_sppt_yg_dibayar), 0) as total, extract(DAY from tgl_pembayaran_sppt) as tanggal,COUNT(id) as jumlah_data')
-        ->groupByRaw('extract(DAY from tgl_pembayaran_sppt)')
-        ->whereBetween('tgl_pembayaran_sppt', [$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->get()->toArray();
 
-        $simpad = DB::connection('mysql_simpad')->table('sptpd_reguler')->selectRaw('coalesce(SUM(pajak_terhutang), 0) as total, DAY(tgl_bayar) as tanggal, COUNT(id) as jumlah_data')->where('status', 3)
-        ->groupByRaw('DAY(tgl_bayar)')
-        ->whereBetween('tgl_bayar',[$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->get()->toArray();
-        
-        $bphtb = DB::connection('mysql_bphtb')->table('pembayaran_bphtb')->selectRaw('coalesce(SUM(jumlah_bayar), 0) as total, DAY(tanggal_pembayaran) as tanggal, COUNT(id) as jumlah_data')->where('status', 1)
-        ->groupByRaw('DAY(tanggal_pembayaran)')
-        ->whereBetween('tanggal_pembayaran', [$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->get()->toArray();
+        // $countSpptQuery = Sppt::whereBetween('tgl_pembayaran_sppt',[$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->count();
 
-        $allData = [];
+        // $spptQuery = Sppt::limit(100)->whereBetween('tgl_pembayaran_sppt',[$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->chunk(100, function($items) {
+        //     $dataQuery = [];
+        //     foreach ($items as $item) {
+        //         array_push($dataQuery,$item->get());
+        //     }
+        //     return $dataQuery;
+        // });
 
-        for($i=1; $i <= $days ; $i++) {
+
+        for ($i=1; $i <= $days ; $i++) { 
             $daysDate = Carbon::parse($yearNow.'/'.$monthNow.'/'.$i)->format('Y-m-d');
 
-            $allData['realisasi'][$i] = 0;
-            $allData['count'][$i] = 0;
-
-            $key_sppt = array_search($i, array_column($sppt, 'tanggal'));
-
-            if($key_sppt !== false) {
-                $allData['realisasi'][$i]+=$sppt[$key_sppt]->total; 
-                $allData['count'][$i]+= $sppt[$key_sppt]->jumlah_data; 
-            }
-
-            $key_simpad = array_search($i, array_column($simpad, 'tanggal'));
-
-            if($key_simpad !== false) {
-                $allData['realisasi'][$i]+=$simpad[$key_simpad]->total; 
-                $allData['count'][$i]+= $simpad[$key_simpad]->jumlah_data; 
-            }
-
-            $key_bphtb = array_search($i, array_column($bphtb, 'tanggal'));
-
-            if($key_bphtb !== false) {
-                $allData['realisasi'][$i]+=$bphtb[$key_bphtb]->total; 
-                $allData['count'][$i]+= $bphtb[$key_bphtb]->jumlah_data; 
-            }
 
 
-            $allData['full_data'][$i] = [
-                // 'tanggal' => $i.' '.namedMonth($monthNow).' '.$yearNow,
-                'tanggal' => $daysDate,
-                'realisasi' => $allData['realisasi'][$i],
-                'total' => $allData['count'][$i]
-            ];
+            // SIMPAD
+            $sptpd = SptpdReguler::where('status','3')->whereDate('tgl_bayar',$daysDate)->get()->sum(function($item) {
+                return $item->pajak_terhutang;
+            });
+            $count = SptpdReguler::where('status','3')->whereDate('tgl_bayar',$daysDate)->count();
 
             
+            // BPHTB
+            $bphtb = PembayaranBphtb::where('status','1')->whereDate('tanggal_pembayaran',$daysDate)->get()->sum(function($item) {
+                return $item->jumlah_bayar;
+            });
+            $countBphtb = PembayaranBphtb::where('status','1')->whereDate('tanggal_pembayaran',$daysDate)->count();
 
+            // SPPT
+
+            // $sppt = Sppt::chunk(100, function($items) {
+                
+            //     foreach($items as $item) {
+            //         $item::whereYear('tgl_pembayaran_sppt','2019')->get()->sum(function($value) {
+            //             return $value->jml_sppt_yg_dibayar;
+            //         });
+            //     }
+            // });
+
+
+            // $sppt = Sppt::whereDate('tgl_pembayaran_sppt',$daysDate)->limit(500)->chunk(100, function($items) {
+            //     $spptPay = 0;
+            //     foreach($items as $item) {
+            //         $item::get()->sum(function($item) {
+            //             $spptPay + $item->jml_sppt_yg_dibayar;
+            //         });
+            //     }
+
+            //     return $spptPay;
+            // });
+           
+            $daysQuerySppt = Sppt::whereDate('tgl_pembayaran_sppt',$daysDate)->limit(100);
+            
+            // $Query = $daysQuerySppt->count();
+            $countSppt = 100;
+            $sppt = 0;
+
+            $sppt = $daysQuerySppt->get()->sum(function($value) {
+                $value->jml_sppt_yg_dibayar;
+            });
+
+            // if($Query > 100)
+            // {
+            //     $sppt = $daysQuerySppt->chunk(100, function($items) {
+            //         $totalPembayaran = 0;
+            //         foreach($items as $item)
+            //         {
+            //             $item::get()->sum(function($value) {
+            //                 $totalPembayaran += $value->jml_sppt_yg_dibayar;   
+            //             });
+            //         }
+            //         return $totalPembayaran;
+            //     });
+            // }else{
+                // $sppt = $daysQuerySppt->get()->sum(function($value) {
+                //     $value->jml_sppt_yg_dibayar;
+                // });
+            // }
+            
+            // $Query = 0;
+
+            // $querySppt = Sppt::whereDate('tgl_pembayaran_sppt',Carbon::parse('2020-07-22')->format('Y-m-d'))->chunk(100, function($items,$Query) {
+            //     foreach($items as $item) 
+            //     {
+            //         $Query + $item::count();
+            //     }
+
+            //     return $countSppt;
+            // });
+
+            $fullData = [
+                // 'tanggal' => $i.' '.namedMonth($monthNow).' '.$yearNow,
+                'tanggal' => $daysDate,
+                'realisasi' => $sptpd + $bphtb + $sppt,
+                'total' => $count + $countBphtb + $countSppt
+            ];
+
+            $totalData = $totalData + $count + $countBphtb + $countSppt;
+            $totalRealisasi = $totalRealisasi + $sptpd + $bphtb + $sppt;
+
+            array_push($allData,$fullData);
+            array_push($realisasi,$sptpd + $bphtb + $sppt);
             array_push($dataDays,$i);
 
+           
         }
 
 
         return response()->json([
-            'bulan_nomor' => $monthNow,
             'bulan' => namedMonth($monthNow),
+            'bulan_nomor' => $monthNow,
             'tahun' => $yearNow,
             'tanggal' => $date,
             'total_hari' => $days,
-            'realisasi' => array_values($allData['realisasi']),
+            'realisasi' => $realisasi,
             'hari' => $dataDays,
-            'full_data' => array_values($allData['full_data']),
-            'total_data' => array_sum(array_values($allData['count'])),
-            'total_realisasi' => array_sum(array_values($allData['realisasi'])),
+            'full_data' => $allData,
+            'total_data' => $totalData,
+            'total_realisasi' => $totalRealisasi,
+            'memory' => memory_get_usage()
             
         ]);
 

@@ -21,7 +21,7 @@ use App\Model_Simpad\TargetPenerimaan;
 use App\Model_Simpad\SptpdReguler;
 use App\Model_Simpad\WajibPajak;
 use App\Model_Simpad\ObjekPajakSimpad;
-use App\Model_Simpad\JenisPajak;
+use App\Model_Simpad\JenisPajakSimpad;
 
 use Carbon\Carbon;
 
@@ -31,6 +31,175 @@ use Carbon\Carbon;
 
 class HomeController extends Controller
 {
+
+    public function load_data(Request $request) {
+        $year = $this->new_year();
+        $month = $this->new_month();
+        $moreData = $this->getMoreData();
+        $perHari = $this->per_hari($request);
+
+        return response()->json([ 'year' => $year,'month' => $month,'more_data' => $moreData,'per_hari' => $perHari]);
+    }
+
+    public function new_year() {
+        $yearNow = Carbon::now();
+        $yearRange = $yearNow->format('Y') - Settings::first()->range_tahun;
+        $yearFirst = Carbon::parse('1/1/'.$yearRange)->startOfYear()->format('Y-m-d');
+        $yearLast = $yearNow->endOfYear()->format('Y-m-d');
+
+        $arrayYears = $years = array_reverse(range(Carbon::now()->format('Y'), $yearRange),true);
+
+        $sppt = DB::connection('oracle')->table('PEMBAYARAN_SPPT')->selectRaw('coalesce(SUM(jml_sppt_yg_dibayar), 0) as total, extract(YEAR from tgl_pembayaran_sppt) as tahun')
+        ->groupByRaw('extract(YEAR from tgl_pembayaran_sppt)')
+        ->whereBetween('tgl_pembayaran_sppt', [$yearFirst,$yearLast])->get()->toArray();
+
+        $simpad = DB::connection('mysql_simpad')->table('sptpd_reguler')->selectRaw('coalesce(SUM(pajak_terhutang), 0) as total, YEAR(tgl_bayar) as tahun')->where('status', 3)
+        ->groupByRaw('YEAR(tgl_bayar)')
+        ->whereBetween('tgl_bayar', [$yearFirst,$yearLast])->get()->toArray();
+
+        $simpadTarget = TargetPenerimaan::selectRaw('coalesce(SUM(target), 0) as total ,tahun')->whereBetween('tahun', [$yearFirst,$yearLast])->groupBy('tahun')->get()->toArray();
+
+        $bphtb = DB::connection('mysql_bphtb')->table('pembayaran_bphtb')->selectRaw('coalesce(SUM(jumlah_bayar), 0) as total, YEAR(tanggal_pembayaran) as tahun')->where('status', 1)
+        ->groupByRaw('YEAR(tanggal_pembayaran)')
+        ->whereBetween('tanggal_pembayaran', [$yearFirst,$yearLast])->get()->toArray();
+
+        $bphtbTarget = TargetBphtb::selectRaw('coalesce(SUM(target), 0) as total, tahun')->whereBetween('tahun', [$yearFirst,$yearLast])->groupBy('tahun')->get()->toArray();
+
+
+        $allData = [];
+
+        $totalSppt = 0;
+        $totalSimpad = 0;
+        $totalBphtb = 0;
+        $totalRealisasi = 0;
+
+        $totalSpptTarget = 0;
+        $totalSimpadTarget = 0;
+        $totalBphtbTarget = 0;
+        $totalTarget = 0;
+
+        $allData['total_penerimaan'] = 0;
+        $allData['total_target'] = 0;
+
+
+
+        foreach ($arrayYears as $value) {
+            
+            $allData['realisasi_pertahun'][$value] = 0;
+            $allData['target_pertahun'][$value] = 0;
+
+            //REALISASI
+            $key_sppt = array_search($value, array_column($sppt, 'tahun'));
+
+            if($key_sppt !== false) {
+                $allData['penerimaan_sppt'][$value] = $sppt[$key_sppt]->total;
+                $totalSppt+= $sppt[$key_sppt]->total;
+                $allData['total_penerimaan']+= $sppt[$key_sppt]->total;
+                $allData['realisasi_pertahun'][$value]+=$sppt[$key_sppt]->total;
+                
+                
+            }else{
+                $allData['penerimaan_sppt'][$value] = "0";
+            }
+
+            $key_bphtb = array_search($value, array_column($bphtb, 'tahun'));
+
+            if($key_bphtb !== false) {
+                $allData['penerimaan_bphtb'][$value] = $bphtb[$key_bphtb]->total;
+                $totalBphtb+= $bphtb[$key_bphtb]->total;
+                $allData['total_penerimaan']+= $bphtb[$key_bphtb]->total;
+                $allData['realisasi_pertahun'][$value]+=$bphtb[$key_bphtb]->total;
+            }else{
+                $allData['penerimaan_bphtb'][$value] = "0";
+            }
+
+            $key_simpad = array_search($value, array_column($simpad, 'tahun'));
+
+            if($key_simpad !== false) {
+                $allData['penerimaan_simpad'][$value] = $simpad[$key_simpad]->total;
+                $totalSimpad+= $simpad[$key_simpad]->total;
+                $allData['total_penerimaan']+= $simpad[$key_simpad]->total;
+                $allData['realisasi_pertahun'][$value]+=$simpad[$key_simpad]->total;
+            }else{
+                $allData['penerimaan_simpad'][$value] = "0";
+            }
+
+            //TARGET
+
+            $key_simpad_target = array_search($value, array_column($simpadTarget, 'tahun'));
+
+            if($key_simpad_target !== false) {
+                $allData['penerimaan_simpad_target'][$value] = $simpadTarget[$key_simpad_target]['total'];
+                $totalSimpadTarget+= $simpadTarget[$key_simpad_target]['total'];
+                $allData['total_target'] += $simpadTarget[$key_simpad_target]['total'];
+                $allData['target_pertahun'][$value] += $simpadTarget[$key_simpad_target]['total'];
+            }else{
+                $allData['penerimaan_simpad_target'][$value] = "0";
+            }
+
+            $key_bphtb_target = array_search($value, array_column($bphtbTarget, 'tahun'));
+
+            if($key_bphtb_target !== false) {
+                $allData['penerimaan_bphtb_target'][$value] = $bphtbTarget[$key_bphtb_target]['total'];
+                $totalBphtbTarget+= $bphtbTarget[$key_bphtb_target]['total'];
+                $allData['total_target'] += $bphtbTarget[$key_bphtb_target]['total'];
+                $allData['target_pertahun'][$value] += $bphtbTarget[$key_bphtb_target]['total'];
+            }else{
+                $allData['penerimaan_bphtb_target'][$value] = "0";
+            }
+        }
+
+
+        $returnData = [
+             // SPPT
+             'realisasi_pertahun_sppt'=> array_values($allData['penerimaan_sppt']),
+             'realisasi_sppt' => "$totalSppt",
+             'target_pertahun_sppt' => [],
+             'target_sppt' => "$totalSpptTarget",
+             //SIMPAD
+             'realisasi_pertahun_simpad' => array_values($allData['penerimaan_simpad']),
+             'realisasi_simpad' => "$totalSimpad",
+             'target_pertahun_simpad' => array_values($allData['penerimaan_simpad_target']),
+             'target_simpad' => "$totalSimpadTarget",
+             // BPHTB
+             'realisasi_pertahun_bphtb' => array_values($allData['penerimaan_bphtb']),
+             'realisasi_bphtb' => "$totalBphtb",
+             'target_pertahun_bphtb' => array_values($allData['penerimaan_bphtb_target']),
+             'target_bphtb' => "$totalBphtbTarget",
+             //TOTAL DATA
+             'total_realisasi' => $allData['total_penerimaan'],
+             'total_target' => $allData['total_target'],
+             'realisasi_pertahun_total' => array_values($allData['realisasi_pertahun']),
+             'target_pertahun_total' => array_values($allData['target_pertahun'])
+        ];
+
+        return $returnData;
+
+        
+        // return response()->json([
+        //     // SPPT
+        //     'realisasi_pertahun_sppt'=> array_values($allData['penerimaan_sppt']),
+        //     'realisasi_sppt' => "$totalSppt",
+        //     'target_pertahun_sppt' => [],
+        //     'target_sppt' => "$totalSpptTarget",
+        //     //SIMPAD
+        //     'realisasi_pertahun_simpad' => array_values($allData['penerimaan_simpad']),
+        //     'realisasi_simpad' => "$totalSimpad",
+        //     'target_pertahun_simpad' => array_values($allData['penerimaan_simpad_target']),
+        //     'target_simpad' => "$totalSimpadTarget",
+        //     // BPHTB
+        //     'realisasi_pertahun_bphtb' => array_values($allData['penerimaan_bphtb']),
+        //     'realisasi_bphtb' => "$totalBphtb",
+        //     'target_pertahun_bphtb' => array_values($allData['penerimaan_bphtb_target']),
+        //     'target_bphtb' => "$totalBphtbTarget",
+        //     //TOTAL DATA
+        //     'total_realisasi' => $allData['total_penerimaan'],
+        //     'total_target' => $allData['total_target'],
+        //     'realisasi_pertahun_total' => array_values($allData['realisasi_pertahun']),
+        //     'target_pertahun_total' => array_values($allData['target_pertahun'])
+
+        // ]);
+    }
 
     public function year() {
         $yearNow = Carbon::now()->format('Y');
@@ -169,23 +338,230 @@ class HomeController extends Controller
              ]);
     }
 
+    public function new_month() {
+        $yearNow = Carbon::now()->format('Y');
+
+        $data = [
+            ['bulan' => 'Jan', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Feb', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Mar', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Apr', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Mei', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Jun', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Jul', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Agu', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Sep', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Okt', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Nov', 'target' => 0, 'penerimaan' => 0],
+            ['bulan' => 'Des', 'target' => 0, 'penerimaan' => 0],
+        ];
+
+        //sppt
+
+        $sppt = DB::connection('oracle')->table('PEMBAYARAN_SPPT')->selectRaw('coalesce(SUM(jml_sppt_yg_dibayar), 0) as total, extract(MONTH from tgl_pembayaran_sppt) as bulan')
+        ->groupByRaw('extract(MONTH from tgl_pembayaran_sppt)')
+        ->whereYear('tgl_pembayaran_sppt', $yearNow)->get()->toArray();
+        $simpad = DB::connection('mysql_simpad')->table('sptpd_reguler')->selectRaw('coalesce(SUM(pajak_terhutang), 0) as total, MONTH(tgl_bayar) as bulan')->where('status', 3)
+        ->groupByRaw('MONTH(tgl_bayar)')
+        ->whereYear('tgl_bayar', $yearNow)->get()->toArray();
+
+        $simpadTarget = TargetPenerimaan::selectRaw('coalesce(SUM(target), 0) as total, bulan, tahun')->where('tahun', $yearNow)->groupBy('bulan', 'tahun')->get()->toArray();
+        
+
+        $bphtb = DB::connection('mysql_bphtb')->table('pembayaran_bphtb')->selectRaw('coalesce(SUM(jumlah_bayar), 0) as total, MONTH(tanggal_pembayaran) as bulan')->where('status', 1)
+        ->groupByRaw('MONTH(tanggal_pembayaran)')
+        ->whereYear('tanggal_pembayaran', $yearNow)->get()->toArray();
+
+        $bphtbTarget = TargetBphtb::selectRaw('coalesce(SUM(target), 0) as total, bulan, tahun')->where('tahun', $yearNow)->groupBy('bulan', 'tahun')->get()->toArray();
+
+
+        $totalSppt = 0;
+        $totalSimpad = 0;
+        $totalBphtb = 0;
+        $totalRealisasi = 0;
+
+        $totalSpptTarget = 0;
+        $totalSimpadTarget = 0;
+        $totalBphtbTarget = 0;
+        $totalTarget = 0;
+
+        $allData = [];
+
+        for ($i=1; $i <= 12 ; $i++) { 
+
+            // REALISASI
+
+            $spptPerbulan = 0;
+            $simpadPerbulan = 0;
+            $bphtbPerbulan = 0;
+
+            
+        
+
+            //SPPT
+            $key_sppt = array_search($i, array_column($sppt, 'bulan'));
+            if($key_sppt !== false){
+                
+                $allData['penerimaan_sppt'][$i] = $sppt[$key_sppt]->total;
+                $totalSppt += $sppt[$key_sppt]->total;
+                $spptPerbulan = $sppt[$key_sppt]->total;
+            }else{
+                $allData['penerimaan_sppt'][$i] = "0";
+            }
+
+            // if(isset($sppt[0]) && $i == 1){
+
+            //     $allData['penerimaan_sppt'][1] = $sppt[0]->total;
+            //     $spptPerbulan = $sppt[0]->total;
+            //     $totalSppt += $sppt[0]->total;
+            // }
+            // if($key_sppt == 0) {
+                
+                // $allData['penerimaan_sppt'][1] = $sppt[0]->total;
+                // $spptPerbulan = $sppt[0]->total;
+                // $totalSppt += $sppt[0]->total;
+            // }
+
+            //SIMPAD
+            $key_simpad = array_search($i, array_column($simpad, 'bulan'));
+            if($key_simpad !== false) {
+                $allData['penerimaan_simpad'][$i] = $simpad[$key_simpad]->total;
+                $totalSimpad+=$simpad[$key_simpad]->total;
+                $simpadPerbulan = $simpad[$key_simpad]->total;
+            }else{
+                $allData['penerimaan_simpad'][$i] = "0";
+            }
+            // if(isset($simpad[0]) && $i == 1) {
+            //     $allData['penerimaan_simpad'][1] = $simpad[0]->total;
+            //     $totalSimpad+=$simpad[0]->total;
+            //     $simpadPerbulan = $simpad[0]->total;
+            // }
+
+            //BPHTB
+            $key_bphtb = array_search($i, array_column($bphtb, 'bulan'));
+            if($key_bphtb !== false) {
+                $allData['penerimaan_bphtb'][$i] = $bphtb[$key_bphtb]->total;
+                $totalBphtb+=$bphtb[$key_bphtb]->total;
+                $bphtbPerbulan= $bphtb[$key_bphtb]->total;
+            }else{
+                $allData['penerimaan_bphtb'][$i] = "0";
+            }
+            // if(isset($bphtb[0]) && $i == 1) {
+            //     $allData['penerimaan_bphtb'][1] = $bphtb[0]->total;
+            //     $totalBphtb+=$bphtb[0]->total;
+            //     $bphtbPerbulan = $bphtb[0]->total;
+            // }
+
+
+            $allData['total_penerimaan_perbulan'][$i] = $spptPerbulan+$simpadPerbulan+$bphtbPerbulan;
+            // $allData['total_penerimaan'] = 
+
+            $totalRealisasi = $totalRealisasi +$spptPerbulan+$simpadPerbulan+$bphtbPerbulan;
+
+            // TARGET
+
+            $spptPerbulanTarget = 0;
+            $simpadPerbulanTarget = 0;
+            $bphtbPerbulanTarget = 0;
+
+            $num_padded = sprintf("%02d", $i);
+
+            $key_simpad_target = array_search($num_padded, array_column($simpadTarget, 'bulan'));
+            if($key_simpad_target !== false) {
+                $allData['target_simpad'][$i] = $simpadTarget[$key_simpad_target]['total'];
+                $totalSimpadTarget+=$simpadTarget[$key_simpad_target]['total'];
+                $simpadPerbulanTarget= $simpadTarget[$key_simpad_target]['total'];
+            }else{
+                $allData['target_simpad'][$i] = "0";
+            }
+            // if(isset($simpadTarget[0]) && $i == 1) {
+            //     $allData['target_simpad'][1] = $simpadTarget[0]['total'];
+            //     $totalSimpadTarget+=$simpadTarget[0]['total'];
+            //     $simpadPerbulanTarget = $simpadTarget[0]['total'];
+            // }
+
+            $key_bhptb_target = array_search($num_padded, array_column($bphtbTarget, 'bulan'));
+            if($key_bhptb_target !== false) {
+                $allData['target_bphtb'][$i] = $bphtbTarget[$key_bhptb_target]['total'];
+                $totalBphtbTarget+=$bphtbTarget[$key_bhptb_target]['total'];
+                $simpadPerbulanTarget= $bphtbTarget[$key_bhptb_target]['total'];
+            }else{
+                $allData['target_bphtb'][$i] = "0";
+            }
+            // if(isset($bphtbTarget[0]) && $i == 1) {
+            //     $allData['target_bphtb'][1] = $bphtbTarget[0]['total'];
+            //     $totalBphtbTarget+=$bphtbTarget[0]['total'];
+            //     $simpadPerbulanTarget = $bphtbTarget[0]['total'];
+            // }
+
+
+            $allData['total_target_perbulan'][$i] = $spptPerbulanTarget+$simpadPerbulanTarget+$bphtbPerbulanTarget;
+
+            $totalTarget = $totalTarget+$spptPerbulanTarget+$simpadPerbulanTarget+$bphtbPerbulanTarget;
+
+
+        }
+        
+
+        // $collect = collect($data);
+
+        $returnData = [
+            //SPPT
+            'realisasi_perbulan_sppt' => array_values($allData['penerimaan_sppt']),
+            'total_realisasi_sppt' => $totalSppt,
+            'target_perbulan_sppt' => [],
+            'total_target_sppt' => $totalSpptTarget,
+            //SIMPAD
+            'realisasi_perbulan_simpad' => array_values($allData['penerimaan_simpad']),
+            'total_realisasi_simpad' => $totalSimpad,
+            'target_perbulan_simpad' => array_values($allData['target_simpad']),
+            'total_target_simpad' => $totalSimpadTarget,
+            //BPHP
+            'realisasi_perbulan_bphtb' => array_values($allData['penerimaan_bphtb']),
+            'total_realisasi_bphtb' => $totalBphtb,
+            'target_perbulan_bphtb' => array_values($allData['target_bphtb']),
+            'total_target_bphtb' => $totalBphtbTarget,
+            //TOTAL
+            'data_realisasi_perbulan' => array_values($allData['total_penerimaan_perbulan']),
+            'total_realisasi_perbulan' => $totalRealisasi,
+            'data_target_perbulan' => array_values($allData['total_target_perbulan']),
+            'total_target_perbulan' => $totalTarget,
+        ];
+
+        return $returnData;
+
+        // return response()->json([
+        //     //SPPT
+        //     'realisasi_perbulan_sppt' => array_values($allData['penerimaan_sppt']),
+        //     'total_realisasi_sppt' => $totalSppt,
+        //     'target_perbulan_sppt' => [],
+        //     'total_target_sppt' => $totalSpptTarget,
+        //     //SIMPAD
+        //     'realisasi_perbulan_simpad' => array_values($allData['penerimaan_simpad']),
+        //     'total_realisasi_simpad' => $totalSimpad,
+        //     'target_perbulan_simpad' => array_values($allData['target_simpad']),
+        //     'total_target_simpad' => $totalSimpadTarget,
+        //     //BPHP
+        //     'realisasi_perbulan_bphtb' => array_values($allData['penerimaan_bphtb']),
+        //     'total_realisasi_bphtb' => $totalBphtb,
+        //     'target_perbulan_bphtb' => array_values($allData['target_bphtb']),
+        //     'total_target_bphtb' => $totalBphtbTarget,
+        //     //TOTAL
+        //     'data_realisasi_perbulan' => array_values($allData['total_penerimaan_perbulan']),
+        //     'total_realisasi_perbulan' => $totalRealisasi,
+        //     'data_target_perbulan' => array_values($allData['total_target_perbulan']),
+        //     'total_target_perbulan' => $totalTarget,
+            
+        // ]);
+
+
+    }
+
     public function month() {
 
         $yearNow = Carbon::now()->format('Y');
 
-        $months = [
-            '01' => 0,
-            '02' => 0,
-            '03' => 0,
-            '04' => 0,
-            '05' => 0,
-            '06' => 0,
-            '07' => 0,
-            '08' => 0,
-            '09' => 0,
-            '10' => 0,
-            '11' => 0,
-            '12' => 0
+        $months = ['01' => 0,'02' => 0,'03' => 0,'04' => 0,'05' => 0,'06' => 0,'07' => 0,'08' => 0,'09' => 0,'10' => 0,'11' => 0,'12' => 0
         ];
 
         // ALL DATA CHART
@@ -347,7 +723,7 @@ class HomeController extends Controller
 
   
 
-    public function getMoreData(Request $request)
+    public function getMoreData()
     {
 
         $sptpd = SptpdReguler::where('status',3)->orderBy('objek_pajak_id','ASC')->get();
@@ -376,10 +752,116 @@ class HomeController extends Controller
             $dataObjekPajak[$key] = $objekPajak;
         }
 
-        $jenisPajak = JenisPajak::where('level',3)->get();
+        $jenisPajak = JenisPajakSimpad::where('level',3)->get();
+
+        
+
+        // SELECT ingredient_id, ingredient_name, date_ordered, "Quantity & Unit" AS Quantity, unit_price * quantity AS "Total Amount" FROM ingredient WHERE extract(month from date_ordered) = 11 ORDER BY 'date_ordered' DESC;
+
+        $returnData= [ 'top' => $dataObjekPajak,'pajak' => $jenisPajak];
+
+        return $returnData;
+
+        // return response()->json([ 'top' => $dataObjekPajak,'pajak' => $jenisPajak]);
+    }
+
+    public function per_hari($request)
+    {
+
+
+        // $request->month == '' ? Carbon::now()->format('m') : $request->month;
+
+        $monthNow = $request->month == '' ? Carbon::now()->format('m') : $request->month;
+        $yearNow = $request->year == '' ? Carbon::now()->format('Y') : $request->year;
+
+        $date = $yearNow.'/'.$monthNow.'/01';
+
+        $days = $request->month == '' ? Carbon::now()->daysInMonth : Carbon::parse($date)->daysInMonth;
+
+        $dataDays = [];
+        $realisasi = [];
+        $allData = [];
+        $totalRealisasi = 0;
+        $totalData = 0;
+
+        $sppt = DB::connection('oracle')->table('PEMBAYARAN_SPPT')->selectRaw('coalesce(SUM(jml_sppt_yg_dibayar), 0) as total, extract(DAY from tgl_pembayaran_sppt) as tanggal,COUNT(id) as jumlah_data')
+        ->groupByRaw('extract(DAY from tgl_pembayaran_sppt)')
+        ->whereBetween('tgl_pembayaran_sppt', [$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->get()->toArray();
+
+        $simpad = DB::connection('mysql_simpad')->table('sptpd_reguler')->selectRaw('coalesce(SUM(pajak_terhutang), 0) as total, DAY(tgl_bayar) as tanggal, COUNT(id) as jumlah_data')->where('status', 3)
+        ->groupByRaw('DAY(tgl_bayar)')
+        ->whereBetween('tgl_bayar',[$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->get()->toArray();
+        
+        $bphtb = DB::connection('mysql_bphtb')->table('pembayaran_bphtb')->selectRaw('coalesce(SUM(jumlah_bayar), 0) as total, DAY(tanggal_pembayaran) as tanggal, COUNT(id) as jumlah_data')->where('status', 1)
+        ->groupByRaw('DAY(tanggal_pembayaran)')
+        ->whereBetween('tanggal_pembayaran', [$date,Carbon::parse($yearNow.'/'.$monthNow.'/'.$days)->format('Y-m-d')])->get()->toArray();
+
+        $allData = [];
+
+        for($i=1; $i <= $days ; $i++) {
+            $daysDate = Carbon::parse($yearNow.'/'.$monthNow.'/'.$i)->format('Y-m-d');
+
+            $allData['realisasi'][$i] = 0;
+            $allData['count'][$i] = 0;
+
+            $key_sppt = array_search($i, array_column($sppt, 'tanggal'));
+
+            if($key_sppt !== false) {
+                $allData['realisasi'][$i]+=$sppt[$key_sppt]->total; 
+                $allData['count'][$i]+= $sppt[$key_sppt]->jumlah_data; 
+            }
+
+            $key_simpad = array_search($i, array_column($simpad, 'tanggal'));
+
+            if($key_simpad !== false) {
+                $allData['realisasi'][$i]+=$simpad[$key_simpad]->total; 
+                $allData['count'][$i]+= $simpad[$key_simpad]->jumlah_data; 
+            }
+
+            $key_bphtb = array_search($i, array_column($bphtb, 'tanggal'));
+
+            if($key_bphtb !== false) {
+                $allData['realisasi'][$i]+=$bphtb[$key_bphtb]->total; 
+                $allData['count'][$i]+= $bphtb[$key_bphtb]->jumlah_data; 
+            }
+
+
+            $allData['full_data'][$i] = [
+                // 'tanggal' => $i.' '.namedMonth($monthNow).' '.$yearNow,
+                'tanggal' => $daysDate,
+                'realisasi' => $allData['realisasi'][$i],
+                'total' => $allData['count'][$i]
+            ];
+
+
+            array_push($dataDays,$i);
+            
 
 
 
-        return response()->json([ 'top' => $dataObjekPajak,'pajak' => $jenisPajak]);
+        }
+
+
+
+        $returnData = [
+            // 'sppt' => $sppt,
+            'test' => array_sum(array_values($allData['count'])),
+            // 'bphtb' => $bphtb,
+            // 'all_data' => $allData,
+            // 'bulan' => namedMonth($monthNow),
+            'bulan_nomor' => $monthNow,
+            'tahun' => $yearNow,
+            'tanggal' => $date,
+            'total_hari' => $days,
+            'realisasi' => array_values($allData['realisasi']),
+            'hari' => $dataDays,
+            'full_data' => array_values($allData['full_data']),
+            'total_data' => array_sum(array_values($allData['count'])),
+            'total_realisasi' => array_sum(array_values($allData['realisasi'])),
+            
+        ];
+
+
+        return $returnData;
     }
 }

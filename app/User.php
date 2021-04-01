@@ -32,7 +32,7 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     public function getAvatarLinkAttribute()
     {
         if ($this->thumb_avatar) {
-            return url('user/avatar/' . $this->thumb_avatar);
+            return url('profile/' . $this->thumb_avatar);
         }
         return url('user/default-avatar.jpg');
     }

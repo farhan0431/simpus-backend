@@ -65,7 +65,7 @@ class UserController extends Controller
             'username' => 'required|string|unique:users,username,' . $request->id,
             'email' => 'required|email|unique:users,email,' . $request->id,
             'password' => 'nullable|string|min:6',
-            'role_id' => 'required'
+            // 'role_id' => 'requ÷ired'
         ]);
 
         $user = User::find($request->id);
@@ -74,9 +74,26 @@ class UserController extends Controller
             'username' => $request->username,
             'email' => $request->email,
             'password' => $request->password != '' ? app('hash')->make($request->password):$user->password,
-            'role_id' => $request->role_id
+            'role_id' => $request->type == 'edit' ? $request->user()->role_id : $request->role_id
         ]);
         return response()->json(['status' => 'success']);
+    }
+
+    public function uploadPicture(Request $request)
+    {
+        $user = $request->user();
+        if ($request->hasFile('file')) {
+            
+            $file = $request->file('file');
+            $filename = rand(0,100).'-'.$user->username.'.'.$file->extension();
+            
+            move_uploaded_file($file, base_path('public/profile/' . $filename));
+
+            $user->update(['thumb_avatar' => $filename]);
+
+
+        }
+        return response()->json(['status' => $user]);
     }
 
     public function delete($id)

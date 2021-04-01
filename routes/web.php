@@ -33,10 +33,13 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
     $router->group([
         'prefix' => '/home'
     ], function () use ($router) {
-        $router->get('year', 'HomeController@year');
-        $router->get('month', 'HomeController@month');
+        $router->get('year', 'HomeController@new_year');
+        $router->get('new-year', 'HomeController@year');
+        $router->get('new-month', 'HomeController@month');
+        $router->get('month', 'HomeController@new_month');
         $router->get('get-data', 'HomeController@getMoreData');
         $router->get('settings', 'SettingsController@index');
+        $router->get('load', 'HomeController@load_data');
         
         
     });
@@ -76,6 +79,8 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->put('/', 'UserController@update');
             $router->delete('/{id}', 'UserController@delete');
             $router->get('/roles','UserController@roles');
+            $router->post('/upload', 'UserController@uploadPicture');
+
         });
 
         $router->group([
