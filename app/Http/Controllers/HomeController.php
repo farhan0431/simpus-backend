@@ -15,13 +15,6 @@ use App\Model_Bphtb\TargetBphtb;
 
 use App\User;
 use App\Settings;
-use App\TargetPenerimaanSppt;
-
-use App\Model_Simpad\TargetPenerimaan;
-use App\Model_Simpad\SptpdReguler;
-use App\Model_Simpad\WajibPajak;
-use App\Model_Simpad\ObjekPajakSimpad;
-use App\Model_Simpad\JenisPajakSimpad;
 
 use Carbon\Carbon;
 

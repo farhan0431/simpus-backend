@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateTargetPenerimaanTable extends Migration
+class CreateDistrictsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,12 +13,10 @@ class CreateTargetPenerimaanTable extends Migration
      */
     public function up()
     {
-        Schema::create('target_penerimaan', function (Blueprint $table) {
-            $table->id();
-            $table->string('tahun', 4);
-            $table->string('bulan', 2);
-            $table->integer('target');
-            $table->unsignedInteger('jenis_pajak_id');
+        Schema::create('districts', function (Blueprint $table) {
+            $table->string('id', 20)->primary();
+            $table->string('regency_id', 20);
+            $table->string('name');
             $table->timestamps();
         });
     }
@@ -30,6 +28,6 @@ class CreateTargetPenerimaanTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('target_penerimaan');
+        Schema::dropIfExists('districts');
     }
 }

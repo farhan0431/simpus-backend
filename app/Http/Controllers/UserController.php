@@ -34,22 +34,47 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $this->validate($request, [
+
+        $validate = Validator::make($request->all(), [
             'name' => 'required|string',
             'username' => 'required|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
-            'role_id' => 'required'
+            'nik' => 'required',
+            'telpon' => 'required'
         ]);
 
-        User::create([
+        if ($validate->fails()) {
+            return response()->json($validate->errors(), 500);
+        }
+
+        $user = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => app('hash')->make($request->password),
-            'role_id' => $request->role_id
+            'role_id' => $request->role_id,
+            'nik' => $request->nik,
+            'telpon' => $request->telpon
         ]);
-        return response()->json(['status' => 'success']);
+
+
+        // $this->validate($request, [
+        //     'name' => 'required|string',
+        //     'email' => 'required|email|unique:users,email',
+        //     'password' => 'required|min:6',
+        //     'nik' => 'required',
+        //     'telpon' => 'required'
+        // ]);
+
+        // User::create([
+        //     'name' => $request->name,
+        //     'username' => $request->username,
+        //     'email' => $request->email,
+        //     'password' => app('hash')->make($request->password),
+        //     'role_id' => $request->role_id
+        // ]);
+        return response()->json(['status' => 'success','data' => $request->all()]);
     }
 
     public function edit($id)
@@ -75,6 +100,27 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => $request->password != '' ? app('hash')->make($request->password):$user->password,
             'role_id' => $request->type == 'edit' ? $request->user()->role_id : $request->role_id
+        ]);
+        return response()->json(['status' => 'success']);
+    }
+
+    public function editData(Request $request)
+    {
+        $this->validate($request, [
+            'name' => 'required|string',
+            'username' => 'required|string|unique:users,username,' . $request->id,
+            'email' => 'required|email|unique:users,email,' . $request->id
+            // 'role_id' => 'requ÷ired'
+        ]);
+
+        $user = User::find($request->id);
+        $user->update([
+            'name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'password' => $request->password == 'none' ? $user->password : app('hash')->make($request->password),
+            'nik' => $request->nik,
+            'telpon' => $request->telp
         ]);
         return response()->json(['status' => 'success']);
     }

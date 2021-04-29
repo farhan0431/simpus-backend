@@ -15,12 +15,9 @@ class CreateSettingsTable extends Migration
     {
         Schema::create('settings', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('pemerintah');
-            $table->string('deskripsi_pemerintah');            
-            $table->string('slogan');
-            $table->string('inisial');
-            $table->string('kantor_badan')->nullable();
-            $table->string('inisial_kantor_badan')->nullable();
+            $table->string('rumah_sakit');
+            $table->string('deskripsi_rumah_sakit');    
+            $table->string('inisial_rumah_sakit');
             $table->text('alamat')->nullable();
             $table->integer('range_tahun');
             $table->unsignedInteger('provinsi');

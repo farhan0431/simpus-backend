@@ -22,7 +22,8 @@ class CreateUsersTable extends Migration
             $table->unsignedBigInteger('role_id')->nullable();
             $table->text('thumb_avatar')->nullable();
             $table->tinyInteger('aktivasi')->default(0);
-
+            $table->integer('nik');
+            $table->string('telpon');
             $table->rememberToken();
             $table->timestamps();
         });
