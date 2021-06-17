@@ -72,6 +72,7 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->post('/asuransi', 'LaporanController@asuransi');
             $router->get('/laporan-saya','LaporanController@laporanSaya');
             $router->get('/informasi/{id}','LaporanController@informasiStatus');
+            $router->put('/nopol', 'LaporanController@updateNopol');
             
             
         });

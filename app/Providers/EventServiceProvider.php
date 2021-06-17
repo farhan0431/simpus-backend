@@ -14,6 +14,11 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         \App\Events\ExampleEvent::class => [
             \App\Listeners\ExampleListener::class,
+            // \App\Events\Pusher::class
         ],
+        // \App\Event\SendNotif::class => [
+        //     \App\Listener\Exa
+        // ],
+        
     ];
 }

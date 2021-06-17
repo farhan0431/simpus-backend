@@ -35,28 +35,56 @@ class UserController extends Controller
     public function store(Request $request)
     {
 
-        $validate = Validator::make($request->all(), [
-            'name' => 'required|string',
-            'username' => 'required|unique:users,username',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'nik' => 'required',
-            'telpon' => 'required'
-        ]);
+        if($request->adminCreated != 'yes'){
 
-        if ($validate->fails()) {
-            return response()->json($validate->errors(), 500);
+            $validate = Validator::make($request->all(), [
+                'name' => 'required|string',
+                'username' => 'required|unique:users,username',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|min:6',
+                'nik' => 'required',
+                'telpon' => 'required'
+            ]);
+    
+            if ($validate->fails()) {
+                return response()->json($validate->errors(), 500);
+            }
+    
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => app('hash')->make($request->password),
+                'role_id' => $request->role_id,
+                'nik' => $request->nik,
+                'telpon' => $request->telpon
+            ]);
+
+        }else{
+
+            $validate = Validator::make($request->all(), [
+                'name' => 'required|string',
+                'username' => 'required|unique:users,username',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|min:6'
+            ]);
+    
+            if ($validate->fails()) {
+                return response()->json($validate->errors(), 500);
+            }
+    
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => app('hash')->make($request->password),
+                'role_id' => $request->role_id,
+                'nik' => "0",
+                'telpon' => "0"
+            ]);
+
         }
-
-        $user = User::create([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'password' => app('hash')->make($request->password),
-            'role_id' => $request->role_id,
-            'nik' => $request->nik,
-            'telpon' => $request->telpon
-        ]);
+        
 
 
         // $this->validate($request, [

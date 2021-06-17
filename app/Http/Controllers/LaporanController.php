@@ -10,6 +10,10 @@ use App\Laporan;
 use App\Data;
 use App\User;
 
+// namespace App\Events;
+
+use App\Events\ExampleEvent;
+
 use Carbon\Carbon;
 
 class LaporanController extends Controller
@@ -28,6 +32,7 @@ class LaporanController extends Controller
     {
         
 
+        event(new ExampleEvent(true));
 
         $laporan = Laporan::orderBy('created_at','DESC')->when(request()->q, function($query) {
             $query->where('no_identitas','LIKE','%'.request()->q.'%');
@@ -217,6 +222,16 @@ class LaporanController extends Controller
             'user' => $user
 
         ],200);
+    }
+
+    public function updateNopol(Request $request) {
+
+        $laporan = Laporan::where('id', $request->id);
+        $laporan->update([
+            'nopol' => $request->nopol
+        ]);
+        return response()->json(['status' => 'eheem','data' => $laporan]);
+
     }
 
 
