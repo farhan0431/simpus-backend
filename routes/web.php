@@ -30,6 +30,8 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
         $router->post('changepassword', 'AuthController@changePassword');
 
         $router->post('/register', 'UserController@store');
+
+        $router->get('/testing', 'LaporanController@testing');
     });
 
     $router->group([
@@ -73,6 +75,11 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->get('/laporan-saya','LaporanController@laporanSaya');
             $router->get('/informasi/{id}','LaporanController@informasiStatus');
             $router->put('/nopol', 'LaporanController@updateNopol');
+            $router->post('/kwitansi','LaporanController@updateKwitansi');
+            $router->post('/perincian','LaporanController@updatePerincian');
+            $router->post('/polisi','LaporanController@updatePolisi');
+            $router->post('/garansi','LaporanController@updateGaransi');
+            
             
             
         });
@@ -116,6 +123,16 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->get('/provinsi', 'SettingsController@getProvinsi');
             $router->get('/kota/{id}','SettingsController@getKota');
         });
+
+        $router->group([
+            'prefix' => '/rekam-medis'
+        ], function() use ($router) {
+            $router->get('/', 'RekamMedisController@index');
+            $router->get('/rm', 'RekamMedisController@get_rm');
+            $router->put('/', 'RekamMedisController@update');
+            $router->post('/', 'RekamMedisController@store');
+        });
+
 
     });
 

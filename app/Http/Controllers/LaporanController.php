@@ -12,7 +12,7 @@ use App\User;
 
 // namespace App\Events;
 
-use App\Events\ExampleEvent;
+// use App\Events\SendNotif;
 
 use Carbon\Carbon;
 
@@ -31,14 +31,126 @@ class LaporanController extends Controller
     public function index()
     {
         
-
-        event(new ExampleEvent(true));
-
-        $laporan = Laporan::orderBy('created_at','DESC')->when(request()->q, function($query) {
-            $query->where('no_identitas','LIKE','%'.request()->q.'%');
-        })
-        ->paginate(10);
+        $laporan;
+        // event(new ExampleEvent(true));
+        if(4 == 5)
+        {
+            $laporan = Laporan::orderBy('created_at','DESC')->when(request()->q, function($query) {
+                $query->where('no_identitas','LIKE','%'.request()->q.'%');
+            })
+            ->paginate(10);
+        }else{
+            $laporan = Laporan::orderBy('created_at','DESC')->when(request()->q, function($query) {
+                $query->where('no_identitas','LIKE','%'.request()->q.'%');
+            })
+            ->paginate(10);
+        }
         return response()->json(['status' => 'success', 'data' => $laporan]);
+
+    }
+
+    public function updateKwitansi(Request $request)
+    {
+        $user = $request->user();
+        $laporan = Laporan::find($request->id);
+
+        if($request->hasFile('file')){
+            $file = $request->file('file');
+            $filename = 'kwitansi-'.rand(0,100).'-'.$user->username.'.'.$file->extension();
+
+            move_uploaded_file($file, base_path('public/kwitansi/' . $filename));
+
+            $laporan = Laporan::find($request->id);
+            $laporan->update([
+                // 'status_laporan' => 1,
+                'nama' => 'asuuuu',
+                'kwitansi' => $filename
+            ]);
+
+            return response()->json(['status' => 'sukses','data' => 'ada']);
+        };
+
+
+
+    }
+
+    public function updatePerincian(Request $request)
+    {
+
+        Laporan::unguard();
+        $user = $request->user();
+        // $laporan = Laporan::find('id',$request->id);
+
+        if($request->hasFile('file')){
+            $file = $request->file('file');
+            $filename = 'perincian-'.rand(0,100).'-'.$user->username.'.'.$file->extension();
+
+            move_uploaded_file($file, base_path('public/perincian/' . $filename));
+            // Laporan::find($request->id)->update(['perincian',$filename]);
+            $laporan = Laporan::find($request->id);
+            $laporan->update([
+                // 'status_laporan' => 1,
+                'perincian' => $filename
+            ]);
+
+            return response()->json(['status' => 'sukses']);
+
+        };
+
+
+
+    }
+
+    public function updatePolisi(Request $request)
+    {
+
+        Laporan::unguard();
+        $user = $request->user();
+        // $laporan = Laporan::find('id',$request->id);
+
+        if($request->hasFile('file')){
+            $file = $request->file('file');
+            $filename = 'surat-polisi-'.rand(0,100).'-'.$user->username.'.'.$file->extension();
+
+            move_uploaded_file($file, base_path('public/polisi/' . $filename));
+            // Laporan::find($request->id)->update(['perincian',$filename]);
+            $laporan = Laporan::find($request->id);
+            $laporan->update([
+                // 'status_laporan' => 1,
+                'surat_polisi' => $filename
+            ]);
+
+            return response()->json(['status' => 'sukses']);
+
+        };
+
+
+
+    }
+    public function updateGaransi(Request $request)
+    {
+
+        Laporan::unguard();
+        $user = $request->user();
+        // $laporan = Laporan::find('id',$request->id);
+
+        if($request->hasFile('file')){
+            $file = $request->file('file');
+            $filename = 'jasaraharja-'.rand(0,100).'-'.$user->username.'.'.$file->extension();
+
+            move_uploaded_file($file, base_path('public/garansi/' . $filename));
+            // Laporan::find($request->id)->update(['perincian',$filename]);
+            $laporan = Laporan::find($request->id);
+            $laporan->update([
+                // 'status_laporan' => 1,
+                'garansi' => $filename
+            ]);
+
+            return response()->json(['status' => 'sukses']);
+
+        };
+
+
 
     }
 
@@ -153,18 +265,23 @@ class LaporanController extends Controller
     public function asuransi(Request $request)
     {
 
-        $data = Data::create([
-            'id_laporan' => $request->id,
+        // $data = Data::create([
+        //     'id_laporan' => $request->id,
+        //     'jenis_identitas' => $request->jenis_identitas,
+        //     'no_identitas' => $request->no_identitas,
+        //     'nama' => $request->nama,
+        //     'kondisi_korban' => $request->kondisi_korban,
+        //     'jenis_kecelakaan' => $request->jenis_kecelakaan
+        // ]);
+
+        $laporan = Laporan::find($request->id);
+        $laporan->update([
+            // 'status_laporan' => 1,
             'jenis_identitas' => $request->jenis_identitas,
             'no_identitas' => $request->no_identitas,
             'nama' => $request->nama,
             'kondisi_korban' => $request->kondisi_korban,
             'jenis_kecelakaan' => $request->jenis_kecelakaan
-        ]);
-
-        $laporan = Laporan::find($request->id);
-        $laporan->update([
-            'status_laporan' => 1
         ]);
     
 
@@ -232,6 +349,13 @@ class LaporanController extends Controller
         ]);
         return response()->json(['status' => 'eheem','data' => $laporan]);
 
+    }
+
+    public function testing() {
+
+        event(new \App\Events\NewMessageEvent('my-channel','asd'));
+
+        return response()->json(['status' => 'eheem']);
     }
 
 

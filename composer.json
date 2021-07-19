@@ -33,6 +33,9 @@
         "files": [
             "app/Helpers/NamedMonth.php",
             "app/Helpers/NamaBulan.php"
+        ],
+        "classmap": [
+            "app/libraries"
         ]
     },
     "autoload-dev": {
