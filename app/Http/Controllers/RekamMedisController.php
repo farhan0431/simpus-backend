@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Settings;
 use App\RekamMedis;
 use App\User;
+use App\Identitas;
 
 // namespace App\Events;
 
@@ -32,6 +33,20 @@ class RekamMedisController extends Controller
         $rm = str_pad($rm, 8,'0',STR_PAD_LEFT);
 
         return response()->json(['status'=>'success','data' => $rm]);
+    }
+    
+    public function search(Request $request)
+    {
+
+        $no_rm = (int)$request->no_rm;
+
+        $data = RekamMedis::where('no_rm',$no_rm)->first();
+
+        if($data) {
+            return response()->json(['status'=>'success','data' => $data]);
+        }else{
+            return response()->json(['status'=>'success','data' => null]);
+        }
     }
 
     public function store(Request $request)
@@ -59,23 +74,27 @@ class RekamMedisController extends Controller
             return response()->json($validate->errors(), 500);
         }
 
-
-        $store = RekamMedis::create([
+        $indentitas = Identitas::create([
             'no_rm' => $request->no_rm,
             'nama' => $request->nama,
-            'ktp' => $request->ktp,
+            'nik' => $request->ktp,
             'tanggal_lahir' => $request->tanggal_lahir,
             'alamat' => $request->alamat,
             'telp' => $request->telp,
-            'berat_badan' => $request->berat_badan,
+            'status_pembayaran' => $request->status,
+            'riwayat_alergi' => $request->riwayat_alergi,
+        ]);
+
+
+        $store = RekamMedis::create([
+            'no_rm' => $request->no_rm,
             'tinggi_badan' => $request->tinggi_badan,
             'tekanan_darah' => $request->tekanan_darah,
             'nadi' => $request->nadi,
             'lingkar_perut' => $request->lingkar_perut,
+            'berat_badan' => $request->berat_badan,
             'suhu' => $request->suhu_badan,
             'nafas' => $request->nafas,
-            'status_pembayaran' => $request->status,
-            'riwayat_alergi' => $request->riwayat_alergi,
             'rujukan_poli' => $request->rujukan_poli,
 
         ]);

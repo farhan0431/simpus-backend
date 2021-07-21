@@ -16,11 +16,6 @@ class CreateRekamMedisTable extends Migration
         Schema::create('rekam_medis', function (Blueprint $table) {
             $table->id();
             $table->integer('no_rm');
-            $table->string('nama');
-            $table->string('nik');
-            $table->date('tanggal_lahir');
-            $table->string('alamat');
-            $table->string('telp');
             $table->integer('berat_badan');
             $table->integer('tinggi_badan');
             $table->string('tekanan_darah');
@@ -28,8 +23,7 @@ class CreateRekamMedisTable extends Migration
             $table->integer('lingkar_perut');
             $table->integer('suhu');
             $table->string('nafas');
-            $table->string('riwayat_alergi');
-            $table->integer('status_pembayaran')->comment('1:BPJS | 2:Umum');
+            $table->integer('rujukan_poli')->comment('1: Umum | 2:Gigi');
             $table->timestamps();
         });
     }
