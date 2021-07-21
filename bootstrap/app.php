@@ -106,7 +106,7 @@ $app->register(Tymon\JWTAuth\Providers\LumenServiceProvider::class);
 $app->register(Fruitcake\Cors\CorsServiceProvider::class);
 $app->register(\Barryvdh\DomPDF\ServiceProvider::class);
 $app->register(\Maatwebsite\Excel\ExcelServiceProvider::class);
-$app->register(Yajra\Oci8\Oci8ServiceProvider::class);
+// $app->register(Yajra\Oci8\Oci8ServiceProvider::class);
 
 $app->configure('dompdf');
 

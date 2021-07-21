@@ -18,6 +18,7 @@ class CreateIdentitasTable extends Migration
             $table->integer('no_rm');
             $table->string('nama');
             $table->string('nik');
+            $table->integer('jenis_kelamin')->comment('1: Laki-laki | 2: Wanita');
             $table->date('tanggal_lahir');
             $table->string('alamat');
             $table->string('telp');

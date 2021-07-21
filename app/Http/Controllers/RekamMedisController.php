@@ -9,6 +9,8 @@ use App\Settings;
 use App\RekamMedis;
 use App\User;
 use App\Identitas;
+use App\PemeriksaanUmum;
+use App\Dokumen;
 
 // namespace App\Events;
 
@@ -40,7 +42,7 @@ class RekamMedisController extends Controller
 
         $no_rm = (int)$request->no_rm;
 
-        $data = RekamMedis::where('no_rm',$no_rm)->first();
+        $data = Identitas::where('no_rm',$no_rm)->first();
 
         if($data) {
             return response()->json(['status'=>'success','data' => $data]);
@@ -65,10 +67,11 @@ class RekamMedisController extends Controller
             'lingkar_perut' => 'required',
             'suhu_badan' => 'required',
             'nafas' => 'required',
-            'riwayat_alergi' => 'required',
+            // 'riwayat_alergi' => 'required',
             'no_rm' => 'required',
-            'status' => 'required'
-        ]);
+            'status' => 'required',
+            'jenis_kelamin' => 'required'
+        ]); 
 
         if ($validate->fails()) {
             return response()->json($validate->errors(), 500);
@@ -83,6 +86,7 @@ class RekamMedisController extends Controller
             'telp' => $request->telp,
             'status_pembayaran' => $request->status,
             'riwayat_alergi' => $request->riwayat_alergi,
+            'jenis_kelamin' => $request->jenis_kelamin
         ]);
 
 
@@ -101,6 +105,61 @@ class RekamMedisController extends Controller
 
         return response()->json([
             'status' => 'success'
+        ],200);
+    }
+
+    public function insert(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'berat_badan' => 'required',
+            'tinggi_badan' => 'required',
+            'tekanan_darah' => 'required',
+            'nadi' => 'required',
+            'lingkar_perut' => 'required',
+            'suhu_badan' => 'required',
+            'nafas' => 'required',
+            'no_rm' => 'required'
+        ]); 
+
+        if ($validate->fails()) {
+            return response()->json($validate->errors(), 500);
+        }
+
+
+
+        $store = RekamMedis::create([
+            'no_rm' => $request->no_rm,
+            'tinggi_badan' => $request->tinggi_badan,
+            'tekanan_darah' => $request->tekanan_darah,
+            'nadi' => $request->nadi,
+            'lingkar_perut' => $request->lingkar_perut,
+            'berat_badan' => $request->berat_badan,
+            'suhu' => $request->suhu_badan,
+            'nafas' => $request->nafas,
+            'rujukan_poli' => $request->rujukan_poli,
+
+        ]);
+
+        if(count($request->pemeriksaan) > 0) {
+            foreach ($request->pemeriksaan as $row) {
+               PemeriksaanUmum::create([
+                   'no_rm' => $request->no_rm,
+                   'subjek' => $row['subjek'],
+                   'objek' => $row['objek'],
+                   'anamnesa' => $row['anamnesa'],
+                   'perawatan' => $row['perawatan'],
+                   'diagnosa' => $row['diagnosa'],
+                   'dokter' => ''
+               ]);
+
+            }
+        }
+
+
+
+        return response()->json([
+            'status' => 'success',
+            'perawatan' => $request->pemeriksaan
         ],200);
     }
 
