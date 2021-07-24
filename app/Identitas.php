@@ -5,6 +5,9 @@ namespace App;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Dokumen;
+use App\PemeriksaanUmum;
+use App\RekamMedis;
 
 
 class Identitas extends Model
@@ -13,7 +16,10 @@ class Identitas extends Model
     protected $table = 'identitas';
     protected $guarded = [];
     protected $appends = [
-        'umur'
+        'umur',
+        'dokumen_link',
+        'riwayat_pemeriksaan',
+        'rekam_medis'
     ];
     // public function getKwitansiLinkAttribute()
     // {
@@ -36,6 +42,27 @@ class Identitas extends Model
 
 
         return $age;
+    }
+
+    public function getDokumenLinkAttribute()
+    {
+        $dokumen = Dokumen::where('no_rm',$this->no_rm)->orderBy('created_at','desc')->first();
+
+        if($dokumen != null)
+        {
+            return url('dokumen/'.$dokumen['dokumen']);
+        }
+        return null;
+    }
+
+    public function getRiwayatPemeriksaanAttribute()
+    {
+        return PemeriksaanUmum::where('no_rm',$this->no_rm)->orderBy('created_at','asc')->get();
+    }
+
+    public function getRekamMedisAttribute()
+    {
+        return RekamMedis::where('no_rm',$this->no_rm)->orderBy('created_at','desc')->first();
     }
 
 

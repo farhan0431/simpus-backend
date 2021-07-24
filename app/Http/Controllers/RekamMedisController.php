@@ -11,6 +11,7 @@ use App\User;
 use App\Identitas;
 use App\PemeriksaanUmum;
 use App\Dokumen;
+use App\Odontogram;
 
 // namespace App\Events;
 
@@ -23,19 +24,27 @@ class RekamMedisController extends Controller
 
     public function index()
     {
-        
+        $data = Identitas::orderBy('no_rm','ASC')->when(request()->q, function($query) {
+            $query->where('no_rm','LIKE','%'.request()->q.'%')->OrWhere('nama','LIKE','%'.request()->q.'%');
+        })->paginate(10);
+
+        return response()->json(['status' => 'success', 'data' => $data]);
     }
 
     public function get_rm()
     {
-        $data = RekamMedis::orderBy('created_at','desc')->first();
+        $data = Identitas::orderBy('created_at','desc')->first();
 
-        $rm = $data['no_rm'] + 1;
+        $rm = $data != null ? $data['no_rm'] + 1 : 1;
 
         $rm = str_pad($rm, 8,'0',STR_PAD_LEFT);
 
         return response()->json(['status'=>'success','data' => $rm]);
     }
+
+   
+
+    
     
     public function search(Request $request)
     {
@@ -155,12 +164,73 @@ class RekamMedisController extends Controller
             }
         }
 
+        if($request->odontogram != null)
+        {
+            Odontogram::create([
+               'no_rm' => $request->no_rm,
+
+               'a18' => $request->odontogram['a'],
+               'a17' => $request->odontogram['e'],
+               'a16' => $request->odontogram['i'],
+               'a15_55' => $request->odontogram['m'],
+               'a14_54' => $request->odontogram['q'],
+               'a13_53' => $request->odontogram['u'],
+               'a12_52' => $request->odontogram['y'],
+               'a11_51' => $request->odontogram['ac'],
+
+               'a28' => $request->odontogram['b'],
+               'a27' => $request->odontogram['f'],
+               'a26' => $request->odontogram['j'],
+               'a25_65' => $request->odontogram['n'],
+               'a24_64' => $request->odontogram['r'],
+               'a23_63' => $request->odontogram['v'],
+               'a22_62' => $request->odontogram['z'],
+               'a21_61' => $request->odontogram['ad'],
+
+               'a38' => $request->odontogram['c'],
+               'a37' => $request->odontogram['g'],
+               'a36' => $request->odontogram['k'],
+               'a35_75' => $request->odontogram['o'],
+               'a34_74' => $request->odontogram['s'],
+               'a33_73' => $request->odontogram['w'],
+               'a32_72' => $request->odontogram['aa'],
+               'a31_71' => $request->odontogram['ae'],
+
+               'a48' => $request->odontogram['d'],
+               'a47' => $request->odontogram['h'],
+               'a46' => $request->odontogram['l'],
+               'a45_85' => $request->odontogram['p'],
+               'a44_84' => $request->odontogram['t'],
+               'a43_83' => $request->odontogram['x'],
+               'a41_84' => $request->odontogram['ab'],
+               'a41_81' => $request->odontogram['af'],
+            ]);
+        }
+
 
 
         return response()->json([
             'status' => 'success',
             'perawatan' => $request->pemeriksaan
         ],200);
+    }
+
+    public function dokumen(Request $request)
+    {
+        if($request->hasFile('file')) {
+            $file = $request->file('file');
+            $filename = 'dokumen-'.rand(0,100).'-'.$request->no_rm.'.'.$file->extension();
+
+            move_uploaded_file($file, base_path('public/dokumen/'.$filename));
+
+            $store = Dokumen::create([
+                'no_rm' => $request->no_rm,
+                'dokumen' => $filename
+            ]);
+
+            return response()->json(['status' => 'sukses']);
+
+        }
     }
 
 }

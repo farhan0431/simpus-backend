@@ -133,6 +133,9 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->post('/', 'RekamMedisController@store');
             $router->get('/search','RekamMedisController@search');
             $router->post('/insert', 'RekamMedisController@insert');
+            $router->post('/dokumen', 'RekamMedisController@dokumen');
+
+
 
         });
 
