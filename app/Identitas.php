@@ -8,6 +8,8 @@ use Carbon\Carbon;
 use App\Dokumen;
 use App\PemeriksaanUmum;
 use App\RekamMedis;
+use App\PemeriksaanGigi;
+
 
 
 class Identitas extends Model
@@ -19,6 +21,7 @@ class Identitas extends Model
         'umur',
         'dokumen_link',
         'riwayat_pemeriksaan',
+        'riwayat_pemeriksaan_gigi',
         'rekam_medis'
     ];
     // public function getKwitansiLinkAttribute()
@@ -58,6 +61,11 @@ class Identitas extends Model
     public function getRiwayatPemeriksaanAttribute()
     {
         return PemeriksaanUmum::where('no_rm',$this->no_rm)->orderBy('created_at','asc')->get();
+    }
+
+    public function getRiwayatPemeriksaanGigiAttribute()
+    {
+        return PemeriksaanGigi::where('no_rm',$this->no_rm)->orderBy('created_at','asc')->get();
     }
 
     public function getRekamMedisAttribute()

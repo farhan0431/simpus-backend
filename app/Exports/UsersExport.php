@@ -1,280 +1,461 @@
 <?php
-
-namespace App\Http\Controllers;
-use Illuminate\Http\Request;
-use Validator;
-use Illuminate\Support\Facades\Auth;
-
-use App\Settings;
-use App\RekamMedis;
+ 
+namespace App\Exports;
+ 
 use App\User;
-use App\Identitas;
-use App\PemeriksaanUmum;
 use App\PemeriksaanGigi;
-use App\Dokumen;
-use App\Odontogram;
-use App\Exports\UsersExport;
-use Maatwebsite\Excel\Facades\Excel;
-use Maatwebsite\Excel\Facedes\WithHeadings;
+use App\RekamMedis;
+use App\Identitas;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithProperties;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\BeforeExport;
+use Maatwebsite\Excel\Events\BeforeWriting;
+use Maatwebsite\Excel\Events\BeforeSheet;
+use Maatwebsite\Excel\Events\AfterSheet;
 
-
-// namespace App\Events;
-
-// use App\Events\SendNotif;
 
 use Carbon\Carbon;
 
-class RekamMedisController extends Controller
+
+// use Maatwebsite\Excel\Concerns\FromQuery;
+// use Maatwebsite\Excel\Concerns\WithMapping;
+
+
+
+
+class UsersExport implements WithStyles,WithProperties,WithEvents
 {
 
-    public function index()
-    {
-        $data = Identitas::orderBy('no_rm','ASC')->when(request()->q, function($query) {
-            $query->where('no_rm','LIKE','%'.request()->q.'%')->OrWhere('nama','LIKE','%'.request()->q.'%');
-        })->paginate(10);
+    private $count;
+    private $tahun;
+    private $bulan;
+    private $lastCount;
+    private $jumlah;
+    private $data;
 
-        return response()->json(['status' => 'success', 'data' => $data]);
-    }
+    public function __construct($count,$tahun,$bulan,$jumlah) {
+        $this->count = $count+3;
+        $this->tahun = $tahun;
+        $this->bulan = $bulan;
+        $this->jumlah = $jumlah;
 
-    public function get_rm()
-    {
-        $data = Identitas::orderBy('created_at','desc')->first();
-
-        $rm = $data != null ? $data['no_rm'] + 1 : 1;
-
-        $rm = str_pad($rm, 8,'0',STR_PAD_LEFT);
-
-        return response()->json(['status'=>'success','data' => $rm]);
-    }
-
-   
-
-    
-    
-    public function search(Request $request)
-    {
-
-        $no_rm = (int)$request->no_rm;
-
-        $data = Identitas::where('no_rm',$no_rm)->first();
-
-        if($data) {
-            return response()->json(['status'=>'success','data' => $data]);
-        }else{
-            return response()->json(['status'=>'success','data' => null]);
-        }
-    }
-
-    public function store(Request $request)
-    {
-        $validate = Validator::make($request->all(), [
-            'nama' => 'required',
-            'ktp' => 'required',
-            'tanggal_lahir' => 'required|date',
-            'alamat' => 'required',
-            'telp' => 'required',
-            'berat_badan' => 'required',
-            'tinggi_badan' => 'required',
-            'tekanan_darah' => 'required',
-            'nadi' => 'required',
-            'rujukan_poli' => 'required',
-            'lingkar_perut' => 'required',
-            'suhu_badan' => 'required',
-            'nafas' => 'required',
-            // 'riwayat_alergi' => 'required',
-            'no_rm' => 'required',
-            'status' => 'required',
-            'jenis_kelamin' => 'required'
-        ]); 
-
-        if ($validate->fails()) {
-            return response()->json($validate->errors(), 500);
-        }
-
-        $indentitas = Identitas::create([
-            'no_rm' => $request->no_rm,
-            'nama' => $request->nama,
-            'nik' => $request->ktp,
-            'tanggal_lahir' => $request->tanggal_lahir,
-            'alamat' => $request->alamat,
-            'telp' => $request->telp,
-            'status_pembayaran' => $request->status,
-            'riwayat_alergi' => $request->riwayat_alergi,
-            'jenis_kelamin' => $request->jenis_kelamin
-        ]);
+        // $this->data = PemeriksaanGigi::count();
+        $this->data = $this->laporanData($tahun,$bulan);
 
 
-        $store = RekamMedis::create([
-            'no_rm' => $request->no_rm,
-            'tinggi_badan' => $request->tinggi_badan,
-            'tekanan_darah' => $request->tekanan_darah,
-            'nadi' => $request->nadi,
-            'lingkar_perut' => $request->lingkar_perut,
-            'berat_badan' => $request->berat_badan,
-            'suhu' => $request->suhu_badan,
-            'nafas' => $request->nafas,
-            'rujukan_poli' => $request->rujukan_poli,
-
-        ]);
-
-        return response()->json([
-            'status' => 'success'
-        ],200);
-    }
-
-    public function insert(Request $request)
-    {
-        $validate = Validator::make($request->all(), [
-            'berat_badan' => 'required',
-            'tinggi_badan' => 'required',
-            'tekanan_darah' => 'required',
-            'nadi' => 'required',
-            'lingkar_perut' => 'required',
-            'suhu_badan' => 'required',
-            'nafas' => 'required',
-            'no_rm' => 'required'
-        ]); 
-
-        if ($validate->fails()) {
-            return response()->json($validate->errors(), 500);
-        }
-
-
-
-        $store = RekamMedis::create([
-            'no_rm' => $request->no_rm,
-            'tinggi_badan' => $request->tinggi_badan,
-            'tekanan_darah' => $request->tekanan_darah,
-            'nadi' => $request->nadi,
-            'lingkar_perut' => $request->lingkar_perut,
-            'berat_badan' => $request->berat_badan,
-            'suhu' => $request->suhu_badan,
-            'nafas' => $request->nafas,
-            'rujukan_poli' => $request->rujukan_poli,
-
-        ]);
-
-        if(count($request->pemeriksaan) > 0) {
-            if($request->pemeriksaan[0]['type'] != 1) {
-                foreach ($request->pemeriksaan as $row) {
-                    PemeriksaanUmum::create([
-                        'no_rm' => $request->no_rm,
-                        'subjek' => $row['subjek'],
-                        'objek' => $row['objek'],
-                        'anamnesa' => $row['anamnesa'],
-                        'perawatan' => $row['perawatan'],
-                        'diagnosa' => $row['diagnosa'],
-                        'dokter' => '',
-                        'id_rm' => $store->id
-                    ]);
-     
-                 }
-            }else{
-                foreach ($request->pemeriksaan as $row) {
-                    PemeriksaanGigi::create([
-                        'no_rm' => $request->no_rm,
-                        'gigi' => $row['gigi'],
-                        'perawatan' => $row['perawatan'],
-                        'diagnosa' => $row['diagnosa'],
-                        'dokter' => '',
-                        'id_rm' => $store->id
-                    ]);
-     
-                 }
-            }
-            
-        }
-
-        if($request->odontogram != null)
-        {
-            Odontogram::create([
-               'no_rm' => $request->no_rm,
-
-               'a18' => $request->odontogram['a'],
-               'a17' => $request->odontogram['e'],
-               'a16' => $request->odontogram['i'],
-               'a15_55' => $request->odontogram['m'],
-               'a14_54' => $request->odontogram['q'],
-               'a13_53' => $request->odontogram['u'],
-               'a12_52' => $request->odontogram['y'],
-               'a11_51' => $request->odontogram['ac'],
-
-               'a28' => $request->odontogram['b'],
-               'a27' => $request->odontogram['f'],
-               'a26' => $request->odontogram['j'],
-               'a25_65' => $request->odontogram['n'],
-               'a24_64' => $request->odontogram['r'],
-               'a23_63' => $request->odontogram['v'],
-               'a22_62' => $request->odontogram['z'],
-               'a21_61' => $request->odontogram['ad'],
-
-               'a38' => $request->odontogram['c'],
-               'a37' => $request->odontogram['g'],
-               'a36' => $request->odontogram['k'],
-               'a35_75' => $request->odontogram['o'],
-               'a34_74' => $request->odontogram['s'],
-               'a33_73' => $request->odontogram['w'],
-               'a32_72' => $request->odontogram['aa'],
-               'a31_71' => $request->odontogram['ae'],
-
-               'a48' => $request->odontogram['d'],
-               'a47' => $request->odontogram['h'],
-               'a46' => $request->odontogram['l'],
-               'a45_85' => $request->odontogram['p'],
-               'a44_84' => $request->odontogram['t'],
-               'a43_83' => $request->odontogram['x'],
-               'a41_84' => $request->odontogram['ab'],
-               'a41_81' => $request->odontogram['af'],
-            ]);
-        }
-
-
-
-        return response()->json([
-            'status' => 'success',
-            'perawatan' => $request->pemeriksaan
-        ],200);
-    }
-
-    public function dokumen(Request $request)
-    {
-        if($request->hasFile('file')) {
-            $file = $request->file('file');
-            $filename = 'dokumen-'.rand(0,100).'-'.$request->no_rm.'.'.$file->extension();
-
-            move_uploaded_file($file, base_path('public/dokumen/'.$filename));
-
-            $store = Dokumen::create([
-                'no_rm' => $request->no_rm,
-                'dokumen' => $filename
-            ]);
-
-            return response()->json(['status' => 'sukses']);
-
-        }
-    }
-
-    public function laporan(Request $request) {
-        $tahun = $request->tahun == "0" ? Carbon::now()->format('Y') : $request->tahun;
-        $bulan = $request->bulan == "0" ? Carbon::now()->format('m') : $request->bulan;
-
-        // $transaksi = TransaksiKhusus::whereYear('tanggal',$tahun)->whereMonth('tanggal',$bulan);
-
-        // $count = $transaksi->count();
-        // $total = $transaksi->get()->sum(function($value) {
-        //     return $value->jumlah;
-        // });
         
-
-        // $fileName = "Laporan-Excel-$tahun-$bulan.xlsx";
-
-        return Excel::download(new UsersExport(100,$tahun,$bulan,300),'Laporan-Tahun-'.$tahun.'-Bulan-'.$bulan.'.xlsx');
     }
 
-    public function testing(Request $request)
+     /**
+     * @return array
+     */
+    public function registerEvents(): array
     {
-        $tahun = $request->tahun == "0" ? Carbon::now()->format('Y') : $request->tahun;
-        $bulan = $request->bulan == "0" ? Carbon::now()->format('m') : $request->bulan;
+        $styleArray = [
+            'font' => [
+                'bold' => true,
+                'size' => 15
+            ],
+            'borders' => [
+                'outline' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                    'color' => ['argb' => '000'],
+                    'size' => 1
+                ]
+            ]
+            ];
+        $jumlahStyle = [
+            'borders' => [
+                'outline' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                    'color' => ['argb' => '000'],
+                    'size' => 1
+                ]
+                ],'font' => [
+                    'bold' => true,
+                    'size' => 15
+                ],
+                ];
+
+        $tertandaStyle = [
+            'font' => [
+                'bold' => true,
+                'size' => 12
+            ]
+            ];
+        
+            $namaStyle = [
+                'font' => [
+                    'bold' => true,
+                    'size' => 12
+                ],
+                'borders' => [
+                    'bottom' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                        'color' => ['argb' => '000'],
+                        'size' => 1
+                    ]
+                ]
+                ];
+        
+        return [
+            // Handle by a closure.
+            AfterSheet::class => function(AfterSheet $event) use ($styleArray,$jumlahStyle,$tertandaStyle,$namaStyle) {
+
+                $event->sheet->mergeCells('A1:T1');
+                $event->sheet->getStyle('A1')->applyFromArray($styleArray);
+                $event->sheet->setCellValue('A1','LAPORAN KASUS PENYAKIT PENYAKIT GIGI DAN MULUT');
+
+
+                // $event->sheet->mergeCells('A2:B2');
+                // $event->sheet->setCellValue('A2','PUSKESMAS');
+
+                // $event->sheet->mergeCells('C2:D2');
+                // $event->sheet->setCellValue('C2','NAMA');
+
+
+                $event->sheet->mergeCells('E2:F2');
+                $event->sheet->setCellValue('E2','BULAN');
+
+                
+
+                $event->sheet->mergeCells('G2:H2');
+                $event->sheet->setCellValue('G2',': '.$this->bulan);
+
+
+                // $event->sheet->mergeCells('C2:d2');
+                $event->sheet->setCellValue('K2','TH');
+
+                $event->sheet->setCellValue('L2',': '.$this->tahun);
+
+                $event->sheet->mergeCells('A3:A5');
+                $event->sheet->setCellValue('A3','No');
+
+
+                $event->sheet->mergeCells('B3:B5');
+                $event->sheet->setCellValue('B3','Nama Penyakit');
+
+
+                $event->sheet->mergeCells('C3:C5');
+                $event->sheet->setCellValue('C3','ICD X');
+
+
+
+                $event->sheet->mergeCells('D3:N3');
+                $event->sheet->setCellValue('D3','KASUS BARU *)');
+
+                $event->sheet->mergeCells('D4:E4');
+                $event->sheet->setCellValue('D4','< 7 th');
+
+
+                $event->sheet->mergeCells('F4:G4');
+                $event->sheet->setCellValue('F4','7 - 15 th');
+
+
+                $event->sheet->mergeCells('H4:I4');
+                $event->sheet->setCellValue('H4','15 - 59 th');
+
+
+                $event->sheet->mergeCells('J4:K4');
+                $event->sheet->setCellValue('J4',' > 60 th');
+
+                $event->sheet->mergeCells('L4:N4');
+                $event->sheet->setCellValue('L4','TOTAL');
+
+                $event->sheet->mergeCells('O3:Q3');
+                // $event->sheet->mergeCells('O3:O4');
+                $event->sheet->setCellValue('O3','KASUS LAMA **)');
+                
+
+                $event->sheet->mergeCells('R3:T3');
+                // $event->sheet->mergeCells('O3:O4');
+                $event->sheet->setCellValue('R3','JML KUNJUNGAN KASUS (JKK)');
+
+                $event->sheet->setCellValue('D5','L');
+                $event->sheet->setCellValue('E5','P');
+
+
+                $event->sheet->setCellValue('F5','L');
+                $event->sheet->setCellValue('G5','P');
+
+
+                $event->sheet->setCellValue('H5','L');
+                $event->sheet->setCellValue('I5','P');
+
+
+                $event->sheet->setCellValue('J5','L');
+                $event->sheet->setCellValue('K5','P');
+
+
+                $event->sheet->setCellValue('L5','L');
+                $event->sheet->setCellValue('M5','P');
+                $event->sheet->setCellValue('N5','JML');
+
+                $event->sheet->setCellValue('O5','L');
+                $event->sheet->setCellValue('P5','P');
+                $event->sheet->setCellValue('Q5','JML');
+                
+                $event->sheet->setCellValue('R5','L');
+                $event->sheet->setCellValue('S5','P');
+                $event->sheet->setCellValue('T5','JML');
+
+                $event->sheet->setCellValue('A6','1');
+                $event->sheet->setCellValue('A7','2');
+                $event->sheet->setCellValue('A8','3');
+                $event->sheet->setCellValue('A9','4');
+                $event->sheet->setCellValue('A10','5');
+                $event->sheet->setCellValue('A11','6');
+                $event->sheet->setCellValue('A12','7');
+                $event->sheet->setCellValue('A13','8');
+                $event->sheet->setCellValue('A14','9');
+                $event->sheet->setCellValue('A15','10');
+                $event->sheet->setCellValue('A16','11');
+                $event->sheet->setCellValue('A17','12');
+                $event->sheet->setCellValue('A18','13');
+                $event->sheet->setCellValue('A19','14');
+                $event->sheet->setCellValue('A20','15');
+                $event->sheet->setCellValue('A21','16');
+                $event->sheet->setCellValue('A22','17');
+                $event->sheet->setCellValue('A23','18');
+                $event->sheet->setCellValue('A24','19');
+                $event->sheet->setCellValue('A25','20');
+
+                $event->sheet->setCellValue('B6','Gangguan pertumbuhan dan erupsi gigi');
+                $event->sheet->setCellValue('B7','Gigi Tertanam dan Impaksi');
+                $event->sheet->setCellValue('B8','Karies Gigi');
+                $event->sheet->setCellValue('B9','Penyakit Jaringan Keras Gigi Lainnya');
+                $event->sheet->setCellValue('B10','Penyakit Pulpa dan Jaringan Periapikal');
+                $event->sheet->setCellValue('B11','Gingivitis dan Penyakit Periodontal');
+                $event->sheet->setCellValue('B12','Pembesaran Gingiva');
+                $event->sheet->setCellValue('B13','Anomali Dentofasial');
+                $event->sheet->setCellValue('B14','Gangguan Gigi dan Jaringan Penyangga Lainnya');
+                $event->sheet->setCellValue('B15','Kista Rongga Mulut');
+                $event->sheet->setCellValue('B16','Penyakit Rahang Lain');
+                $event->sheet->setCellValue('B17','Penyakit Kelenjar Liur');
+                $event->sheet->setCellValue('B18','Stomatitis dan Lesi-lesi berhubungan');
+                $event->sheet->setCellValue('B19','Angular Cheilitis');
+                $event->sheet->setCellValue('B20','Penyakit Lidah');
+                $event->sheet->setCellValue('B21','Kanker rongga mulut');
+                $event->sheet->setCellValue('B22','Cleft palate');
+                $event->sheet->setCellValue('B23','Cleft lip');
+                $event->sheet->setCellValue('B24','cleft palate with cleft lip');
+                $event->sheet->setCellValue('B25','Lain-lain');
+
+                $event->sheet->setCellValue('C6','K00');
+                $event->sheet->setCellValue('C7','K01');
+                $event->sheet->setCellValue('C8','K02');
+                $event->sheet->setCellValue('C9','K03');
+                $event->sheet->setCellValue('C10','K04');
+                $event->sheet->setCellValue('C11','K05');
+                $event->sheet->setCellValue('C12','K06');
+                $event->sheet->setCellValue('C13','K07');
+                $event->sheet->setCellValue('C14','K08');
+                $event->sheet->setCellValue('C15','K09');
+                $event->sheet->setCellValue('C16','K10');
+                $event->sheet->setCellValue('C17','K11');
+                $event->sheet->setCellValue('C18','K12');
+                $event->sheet->setCellValue('C19','K13');
+                $event->sheet->setCellValue('C20','K14');
+                $event->sheet->setCellValue('C21','C06.9');
+                $event->sheet->setCellValue('C22','Q35');
+                $event->sheet->setCellValue('C23','Q36');
+                $event->sheet->setCellValue('C24','Q37');
+                $event->sheet->setCellValue('C25','');
+
+
+                // 0
+
+                
+
+                for ($i=0; $i < 20 ; $i++) { 
+                    $event->sheet->setCellValue('D'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['pria'][1]));
+                    $event->sheet->setCellValue('F'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['pria'][2]));
+                    $event->sheet->setCellValue('H'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['pria'][3]));
+                    $event->sheet->setCellValue('J'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['pria'][4]));
+
+                    $event->sheet->setCellValue('E'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['wanita'][1]));
+                    $event->sheet->setCellValue('G'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['wanita'][2]));
+                    $event->sheet->setCellValue('I'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['wanita'][3]));
+                    $event->sheet->setCellValue('K'.strval(6+$i) ,count($this->data['kasus_baru'][$i]['wanita'][4]));
+
+                    $event->sheet->setCellValue('L'.strval(6+$i),count($this->data['kasus_baru'][$i]['pria'][1]) + count($this->data['kasus_baru'][$i]['pria'][2]) + count($this->data['kasus_baru'][$i]['pria'][3]) + count($this->data['kasus_baru'][$i]['pria'][4]));
+                    $event->sheet->setCellValue('M'.strval(6+$i),count($this->data['kasus_baru'][$i]['wanita'][1]) + count($this->data['kasus_baru'][$i]['wanita'][2]) + count($this->data['kasus_baru'][$i]['wanita'][3]) + count($this->data['kasus_baru'][$i]['wanita'][4]));
+
+                    $event->sheet->setCellValue('N'.strval(6+$i),count($this->data['kasus_baru'][$i]['pria'][1]) + count($this->data['kasus_baru'][$i]['pria'][2]) + count($this->data['kasus_baru'][$i]['pria'][3]) + count($this->data['kasus_baru'][$i]['pria'][4]) + count($this->data['kasus_baru'][$i]['wanita'][1]) + count($this->data['kasus_baru'][$i]['wanita'][2]) + count($this->data['kasus_baru'][$i]['wanita'][3]) + count($this->data['kasus_baru'][$i]['wanita'][4]));
+
+                }
+
+
+                for ($i=0; $i < 19; $i++) { 
+                   
+                    $event->sheet->setCellValue('O'.strval(6+$i),count($this->data['kasus_lama'][$i]['pria'][1]) + count($this->data['kasus_lama'][$i]['pria'][2]) + count($this->data['kasus_lama'][$i]['pria'][3]) + count($this->data['kasus_lama'][$i]['pria'][4]));
+
+                    $event->sheet->setCellValue('P'.strval(6+$i),count($this->data['kasus_lama'][$i]['wanita'][1]) + count($this->data['kasus_lama'][$i]['wanita'][2]) + count($this->data['kasus_lama'][$i]['wanita'][3]) + count($this->data['kasus_lama'][$i]['wanita'][4]));
+
+
+                    $event->sheet->setCellValue('Q'.strval(6+$i),count($this->data['kasus_lama'][$i]['wanita'][1]) + count($this->data['kasus_lama'][$i]['wanita'][2]) + count($this->data['kasus_lama'][$i]['wanita'][3]) + count($this->data['kasus_lama'][$i]['wanita'][4]) + count($this->data['kasus_lama'][$i]['pria'][1]) + count($this->data['kasus_lama'][$i]['pria'][2]) + count($this->data['kasus_lama'][$i]['pria'][3]) + count($this->data['kasus_lama'][$i]['pria'][4]));
+
+                    
+
+                }
+
+
+                for ($i=0; $i < 19; $i++) { 
+
+                    $event->sheet->setCellValue('R'.strval(6+$i),count($this->data['kasus_baru'][$i]['pria'][1]) + count($this->data['kasus_baru'][$i]['pria'][2]) + count($this->data['kasus_baru'][$i]['pria'][3]) + count($this->data['kasus_baru'][$i]['pria'][4]) + count($this->data['kasus_lama'][$i]['pria'][1]) + count($this->data['kasus_lama'][$i]['pria'][2]) + count($this->data['kasus_lama'][$i]['pria'][3]) + count($this->data['kasus_lama'][$i]['pria'][4]));
+
+                    $event->sheet->setCellValue('S'.strval(6+$i),count($this->data['kasus_baru'][$i]['wanita'][1]) + count($this->data['kasus_baru'][$i]['wanita'][2]) + count($this->data['kasus_baru'][$i]['wanita'][3]) + count($this->data['kasus_baru'][$i]['wanita'][4]) + count($this->data['kasus_lama'][$i]['wanita'][1]) + count($this->data['kasus_lama'][$i]['wanita'][2]) + count($this->data['kasus_lama'][$i]['wanita'][3]) + count($this->data['kasus_lama'][$i]['wanita'][4]));
+
+                    $event->sheet->setCellValue('T'.strval(6+$i),count($this->data['kasus_baru'][$i]['wanita'][1]) + count($this->data['kasus_baru'][$i]['wanita'][2]) + count($this->data['kasus_baru'][$i]['wanita'][3]) + count($this->data['kasus_baru'][$i]['wanita'][4]) + count($this->data['kasus_lama'][$i]['wanita'][1]) + count($this->data['kasus_lama'][$i]['wanita'][2]) + count($this->data['kasus_lama'][$i]['wanita'][3]) + count($this->data['kasus_lama'][$i]['wanita'][4]) + count($this->data['kasus_baru'][$i]['pria'][2]) + count($this->data['kasus_baru'][$i]['pria'][3]) + count($this->data['kasus_baru'][$i]['pria'][4]) + count($this->data['kasus_lama'][$i]['pria'][1]) + count($this->data['kasus_lama'][$i]['pria'][2]) + count($this->data['kasus_lama'][$i]['pria'][3]) + count($this->data['kasus_lama'][$i]['pria'][4]));
+
+                    
+
+
+                }
+
+                $event->sheet->setCellValue('R25',count($this->data['kasus_baru'][19]['pria'][1]) + count($this->data['kasus_baru'][19]['pria'][2]) + count($this->data['kasus_baru'][19]['pria'][3]) + count($this->data['kasus_baru'][19]['pria'][4]));
+                $event->sheet->setCellValue('S25',count($this->data['kasus_baru'][19]['wanita'][1]) + count($this->data['kasus_baru'][19]['wanita'][2]) + count($this->data['kasus_baru'][19]['wanita'][3]) + count($this->data['kasus_baru'][19]['wanita'][4]));
+                 $event->sheet->setCellValue('T25',count($this->data['kasus_baru'][19]['pria'][1]) + count($this->data['kasus_baru'][19]['pria'][2]) + count($this->data['kasus_baru'][19]['pria'][3]) + count($this->data['kasus_baru'][19]['pria'][4]) + count($this->data['kasus_baru'][19]['wanita'][1]) + count($this->data['kasus_baru'][19]['wanita'][2]) + count($this->data['kasus_baru'][19]['wanita'][3]) + count($this->data['kasus_baru'][19]['wanita'][4]));
+
+                $event->sheet->setCellValue('O25','-');
+                $event->sheet->setCellValue('P25','-');
+                $event->sheet->setCellValue('Q25','-');
+
+
+                // $event->sheet->setCellValue('O25','-');
+                // $event->sheet->setCellValue('P25','-');
+                // $event->sheet->setCellValue('Q25','-');
+
+
+                $event->sheet->setCellValue('A27','*)');
+                $event->sheet->mergeCells('B27:N27');
+                $event->sheet->setCellValue('B27','KASUS BARU : kasus yang datang berobat untuk pertama kalinya pada sakit tersebut');
+
+                $event->sheet->setCellValue('A28','**)');
+                $event->sheet->mergeCells('B28:N28');
+                $event->sheet->setCellValue('B28','KASUS LAMA : kasus yang datang berobat untuk kedua kalinya atau lebih pada episode sakit yang sama dengan berobat pertama');
+
+                $event->sheet->setCellValue('A29','***)');
+                $event->sheet->mergeCells('B29:N29');
+                $event->sheet->setCellValue('B29','JUMLAH KUNJUNGAN KASUS : merupakan penjumlahan kasus lama dan kasus baru');
+
+
+
+                
+
+                
+
+                
+
+
+
+                
+
+
+
+
+                
+                
+
+
+                
+
+
+                    
+
+                // $event->sheet->setCellValue('E:','TAHUN');
+                // $event->sheet->setColumnFormat('A1','asdasd');
+
+                // $event->sheet->getStyle('A2:E2')->applyFromArray($styleArray);
+                // $event->sheet->setCellValue('A'.$this->count,$this->jumlah);
+                // $event->sheet->getStyle('A'.$this->count.':E'.$this->count)->applyFromArray($jumlahStyle);
+
+                // $event->sheet->setCellValue('D1',"Tahun $this->tahun Bulan $this->bulan");
+
+                // $event->sheet->setCellValue('D'.($this->count+3),'Tertanda');
+                // $event->sheet->getStyle('D'.($this->count+3))->applyFromArray($tertandaStyle);
+
+                // $event->sheet->setCellValue('D'.($this->count+8),'Hardiansyah, S.H');
+                // $event->sheet->getStyle('D'.($this->count+8))->applyFromArray($namaStyle);
+
+                // $event->sheet->setCellValue('D'.($this->count+9),'Direktur Utama');
+                // $event->sheet->getStyle('D'.($this->count+8))->applyFromArray($tertandaStyle);
+            },
+                        
+        ];
+    }
+    /**
+    * @return \Illuminate\Support\Collection
+    */
+    public function collection()
+    {
+        return [];
+    }
+
+    public function headings(): array
+    {
+        return [
+            ['LAPORAN KASUS PENYAKIT PENYAKIT GIGI DAN MULUT'],
+            ['JUMLAH',
+            'KATEGORI',
+            'TANGGAL',
+            'KETERANGAN',
+            'TIPE']
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        // $sheet->setBorder('A1', 'solid');
+
+        return [
+            // Style the first row as bold text.
+            1   => ['font' => ['bold' => true,'size' => 20], 'border' => ['solid']],
+            // 2    => ['font' => ['bold' => true,'size' => 15], 'border' => ['solid']],
+            // Styling a specific cell by coordinate.
+            // 'B2' => ['font' => ['italic' => true]],
+
+            // Styling an entire column.
+            // 'C'  => ['font' => ['size' => 16]],
+        ];
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A1' => array(
+                'width' => 60,
+            ),
+            'B' => 5,
+            'C' => 5,
+            'D' => 5,
+            'E' => 5            
+        ];
+    }
+
+    public function properties(): array
+    {
+        return [
+            'creator'        => 'PT. Garuda Karya Medika',
+            'lastModifiedBy' => 'Farhan',
+            'title'          => 'Laporan Keuangan',
+            'description'    => 'Laporan Keuangan Perusahaan',
+            'subject'        => 'Laporan',
+            'keywords'       => 'laporan,export,spreadsheet',
+            'category'       => 'laporan',
+            'manager'        => 'Safari Creative',
+            'company'        => 'PT. Garuda Karya Medika',
+        ];
+    }
+
+    public function laporanData($tahun, $bulan) {
+        $tahun = $tahun == "0" ? Carbon::now()->format('Y') : $tahun;
+        $bulan = $bulan == "0" ? Carbon::now()->format('m') : $bulan;
 
         $rekamMedis = RekamMedis::whereYear('created_at',$tahun)->whereMonth('created_at',$bulan)->get();
 
@@ -550,7 +731,7 @@ class RekamMedisController extends Controller
                                 }
                             }else {
                                 array_push($data['kasus_baru'][19]['pria'][1],'baru');
-                                array_push($data['kasus_lama'][19]['pria'][1],'baru');
+                                // array_push($data['kasus_lama'][19]['pria'][1],'baru');
                             }
 
                             
@@ -2115,7 +2296,6 @@ class RekamMedisController extends Controller
                                 }
                             }else {
                                 array_push($data['kasus_baru'][19]['wanita'][3],'baru');
-                                array_push($data['kasus_lama'][19]['wanita'][3],'baru');
                             }
 
                             
@@ -2141,8 +2321,7 @@ class RekamMedisController extends Controller
 
         }
 
-        return response()->json(['status' => 'success', 'data' => $data]);
+        return $data;
 
     }
-
 }

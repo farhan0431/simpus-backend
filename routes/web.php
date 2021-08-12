@@ -17,10 +17,13 @@ $router->get('/', function () use ($router) {
     return $router->app->version();
 });
 
+
 $router->group(['prefix' => 'api/'], function () use ($router) {
     $router->group([
         'prefix' => '/auth'
     ], function () use ($router) {
+        $router->get('/laporan', 'RekamMedisController@laporan');
+
         $router->post('login', 'AuthController@login');
         $router->post('logout', 'AuthController@logout');
         $router->post('refresh', 'AuthController@refresh');
@@ -31,7 +34,6 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
 
         $router->post('/register', 'UserController@store');
 
-        $router->get('/testing', 'LaporanController@testing');
     });
 
     $router->group([
@@ -134,6 +136,8 @@ $router->group(['prefix' => 'api/'], function () use ($router) {
             $router->get('/search','RekamMedisController@search');
             $router->post('/insert', 'RekamMedisController@insert');
             $router->post('/dokumen', 'RekamMedisController@dokumen');
+            $router->get('/testing', 'RekamMedisController@testing');
+
 
 
 
